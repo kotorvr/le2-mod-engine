@@ -46,6 +46,8 @@ Your original file is backed up the first time and can be restored with one clic
 
 ## Virtual Desktop and OpenXR
 
+> **Known issues:** on a Quest 3 this mode played badly: about 49 fps instead of 90, voice lines cutting off, hitches and bouncing hands, even with every mod off. Causes aren't confirmed. Air Link played much better, so use the default Oculus mode unless you want to help test.
+
 The **VR** tab switches the game from the Oculus runtime to OpenXR, so it runs directly on Virtual Desktop's VDXR (or SteamVR) with no Revive. It uses the OpenXR bridge from [lone-echo-openxr](https://github.com/morekitsch/lone-echo-openxr) (Apache-2.0, licenses in `third_party/`): the loader points the game's LibOVR shim at `bin\win10\openxr\` through `LIBOVR_DLL_DIR` and skips the shim's signature check on that DLL. Nothing is installed system-wide, and picking **Oculus** removes the folder again.
 
 Controller vibration is carried over: the game submits a left and a right haptics buffer every frame through `ovr_SubmitControllerVibration`, which the bridge turns into OpenXR haptic pulses. Only the bridge's runtime DLL and the Khronos loader are used, not its platform replacement or its game-file patches.
