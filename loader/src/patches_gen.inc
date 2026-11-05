@@ -211,7 +211,7 @@ static const uint8_t k_unlimited_thrusters_1_e[] = { 0xf3, 0x0f, 0x11, 0x41, 0x4
 static const uint8_t k_unlimited_thrusters_1_r[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
 static const PatchBytes k_unlimited_thrusters[] = {
     { nullptr, 0x70a670, k_unlimited_thrusters_0_e, k_unlimited_thrusters_0_r, 3 },
-    { "4ef64d8f802fab40.dll", 0x8cea, k_unlimited_thrusters_1_e, k_unlimited_thrusters_1_r, 5 },
+    { "4ef64d8f802fab40.dll", 0x8d2a, k_unlimited_thrusters_1_e, k_unlimited_thrusters_1_r, 5 },
 };
 
 static const CallHook k_web_receivers_disabled_hooks[] = {

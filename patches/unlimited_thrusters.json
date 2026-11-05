@@ -11,13 +11,13 @@
     },
     {
       "module": "4ef64d8f802fab40.dll",
-      "rva": "0x8cea",
+      "rva": "0x8d2a",
       "expect": "f3 0f 11 41 48",
       "replace": "90 90 90 90 90",
-      "why": "ui_ar_microthrusters_meter, the wrist thruster battery: node 0x180008cc0 stores power - dt/drainDuration into currentpower (+0x48). Skipping that store keeps the meter full; the regen node 0x180008d00 is untouched."
+      "why": "ui_ar_microthrusters_meter, the wrist thruster battery: node 0x180008d00 stores 0x18000d660's result, which moves currentpower (+0x48) toward 0 at dt*input/drainDuration (+0x38). Skipping that store stops the drain. The regen node 0x180008cc0 (0x18000d4f0, toward 1 at dt/regenDuration +0x3c) is untouched."
     }
   ],
   "values": [],
-  "evidence": "Boost/brake gate on power >= cost (0x1406f95d5 / 0x1406f9620 / 0x1406f9f32 compare against [powerEntry+4]); with the drain gone movement never lowers power, so those checks always pass. The shipping constants copied by the tuning filler 0x14072dd50 show default movement costs are mostly 0 (boost cost 0x141ef74a4=0.0, boost per-second 0x1414dcfd4=0.0, brake per-second 0x141ef74c0=0.0, hand-thruster cost gate 0x141ef74ac=0.0), so in this build movement may already drain little or nothing; the limit players actually feel is the boost cooldown, which is in boost_brake_movement.json. NOT verified in game: whether anything raises these costs at runtime (the constants are .rdata, but the power component is data-driven: maxpower/rechargerate/rechargedelay CD reflected at 0x14084d960). The wrist thruster meter is script state, not suit power: confirmed in play (the meter still emptied with DrainSuitPower patched) and in ui_ar_microthrusters_meter: currentpower +0x48, regen delay +0x40, drainDuration +0x3c, drain computed in 0x18000d4f0.",
+  "evidence": "Boost/brake gate on power >= cost (0x1406f95d5 / 0x1406f9620 / 0x1406f9f32 compare against [powerEntry+4]); with the drain gone movement never lowers power, so those checks always pass. The shipping constants copied by the tuning filler 0x14072dd50 show default movement costs are mostly 0 (boost cost 0x141ef74a4=0.0, boost per-second 0x1414dcfd4=0.0, brake per-second 0x141ef74c0=0.0, hand-thruster cost gate 0x141ef74ac=0.0), so in this build movement may already drain little or nothing; the limit players actually feel is the boost cooldown, which is in boost_brake_movement.json. NOT verified in game: whether anything raises these costs at runtime (the constants are .rdata, but the power component is data-driven: maxpower/rechargerate/rechargedelay CD reflected at 0x14084d960). The wrist thruster meter is script state, not suit power: confirmed in play (the meter still emptied with DrainSuitPower patched) and in ui_ar_microthrusters_meter: currentpower +0x48, regen delay +0x40, regenDuration +0x3c, drainDuration +0x38; drain computed in 0x18000d660, regen in 0x18000d4f0. A first version patched the regen node by mistake: the battery emptied and never refilled in play.",
   "risk": "Only player-movement power drains are skipped; other users of the power component are untouched. Power is runtime state: no save effects."
 }
