@@ -3,3 +3,4 @@ engine/winmm.dll
 __pycache__/
 *.log
 *.tmp
+dist/
