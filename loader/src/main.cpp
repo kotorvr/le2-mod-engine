@@ -31,12 +31,30 @@ struct PatchBytes
     const uint8_t* replace;
     uint16_t len;
 };
+// A call hook redirects one `call <callee>` (E8 rel32) in loneecho2.exe to a wrapper that calls the original and
+// then writes float values into the structure passed as argument `arg` (0-3). Used where the game loads data from
+// its packages through a known function, e.g. a tool's component-data serializer.
+struct FloatWrite
+{
+    uint32_t offset;
+    float value;
+};
+struct CallHook
+{
+    uint32_t site;    // rva of the E8 call instruction
+    uint32_t callee;  // rva it must call (checked)
+    uint8_t arg;
+    const FloatWrite* writes;
+    uint8_t count;
+};
 struct FeatureDef
 {
     const char* id;
     bool live;
     const PatchBytes* patches;
     int count;
+    const CallHook* hooks;
+    int hookCount;
 };
 #include "patches_gen.inc"
 
@@ -117,6 +135,8 @@ static void LoadIniText()
     if (ReadFile(h, buf, sizeof(buf) - 1, &got, nullptr))
         g_iniText.assign(buf, got);
     CloseHandle(h);
+    if (g_iniText.compare(0, 3, "\xEF\xBB\xBF") == 0)  // UTF-8 BOM (Notepad)
+        g_iniText.erase(0, 3);
 }
 
 static bool IniFlag(const char* section, const char* key, int fallback)
@@ -219,6 +239,98 @@ static int SetFeature(int f, bool on, const char* module)
             Log("  %s: %s %s+0x%x skipped (bytes differ: other game build?)", def.id, on ? "apply" : "revert",
                 p.module ? p.module : "exe", p.rva);
         else
+            ++done;
+    }
+    return done;
+}
+
+// ---------------------------------------------------------------- call hooks
+// Each installed hook gets a wrapper Wrap<I>. The E8 at the call site is rewritten to jump to a 14-byte absolute
+// jump placed in a page allocated within +-2 GB of the exe (rel32 can't reach this DLL directly).
+typedef uint64_t (*Fn6)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
+static const int kMaxCallHooks = 32;
+static const CallHook* g_hook[kMaxCallHooks];
+static Fn6 g_hookOriginal[kMaxCallHooks];
+static int g_hookCount = 0;
+
+template <int I>
+static uint64_t Wrap(uint64_t a, uint64_t b, uint64_t c, uint64_t d, uint64_t e, uint64_t f)
+{
+    // Arguments 5 and 6 are passed through as-is (read from the caller's stack slots) in case the callee uses them.
+    uint64_t result = g_hookOriginal[I](a, b, c, d, e, f);
+    const CallHook* h = g_hook[I];
+    uint64_t args[4] = { a, b, c, d };
+    uint8_t* object = (uint8_t*)args[h->arg & 3];
+    if (object != nullptr)
+        for (int i = 0; i < h->count; ++i)
+            *(float*)(object + h->writes[i].offset) = h->writes[i].value;
+    return result;
+}
+
+static const Fn6* WrapFns()
+{
+    static const Fn6 fns[kMaxCallHooks] = {
+        &Wrap<0>, &Wrap<1>, &Wrap<2>, &Wrap<3>, &Wrap<4>, &Wrap<5>, &Wrap<6>, &Wrap<7>,
+        &Wrap<8>, &Wrap<9>, &Wrap<10>, &Wrap<11>, &Wrap<12>, &Wrap<13>, &Wrap<14>, &Wrap<15>,
+        &Wrap<16>, &Wrap<17>, &Wrap<18>, &Wrap<19>, &Wrap<20>, &Wrap<21>, &Wrap<22>, &Wrap<23>,
+        &Wrap<24>, &Wrap<25>, &Wrap<26>, &Wrap<27>, &Wrap<28>, &Wrap<29>, &Wrap<30>, &Wrap<31>,
+    };
+    return fns;
+}
+
+static uint8_t* NearPage(uint8_t* exe)
+{
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    uintptr_t gran = si.dwAllocationGranularity;
+    uintptr_t base = (uintptr_t)exe & ~(gran - 1);
+    for (uintptr_t step = gran; step < 0x70000000; step += gran)
+    {
+        if (base > step)
+            if (void* p = VirtualAlloc((void*)(base - step), 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE))
+                return (uint8_t*)p;
+    }
+    return nullptr;
+}
+
+static int InstallCallHooks(int f)
+{
+    const FeatureDef& def = k_features[f];
+    if (def.hookCount == 0)
+        return 0;
+    uint8_t* exe = (uint8_t*)GetModuleHandleW(nullptr);
+    static uint8_t* page = nullptr;
+    static int used = 0;
+    if (page == nullptr && (page = NearPage(exe)) == nullptr)
+    {
+        Log("  %s: no memory near the exe for call hooks", def.id);
+        return 0;
+    }
+    int done = 0;
+    for (int i = 0; i < def.hookCount; ++i)
+    {
+        const CallHook& h = def.hooks[i];
+        uint8_t* site = exe + h.site;
+        if (site[0] != 0xE8 || site + 5 + *(int32_t*)(site + 1) != exe + h.callee)
+        {
+            Log("  %s: call hook at +0x%x skipped (not a call to +0x%x: other game build?)", def.id, h.site, h.callee);
+            continue;
+        }
+        if (g_hookCount >= kMaxCallHooks || used + 16 > 4096)
+        {
+            Log("  %s: too many call hooks", def.id);
+            break;
+        }
+        int slot = g_hookCount++;
+        g_hook[slot] = &h;
+        g_hookOriginal[slot] = (Fn6)(exe + h.callee);
+        uint8_t* jump = page + used;
+        used += 16;
+        jump[0] = 0xFF; jump[1] = 0x25; *(uint32_t*)(jump + 2) = 0;  // jmp qword ptr [rip+0]
+        *(uint64_t*)(jump + 6) = (uint64_t)WrapFns()[slot];
+        uint8_t call[5] = { 0xE8 };
+        *(int32_t*)(call + 1) = (int32_t)(jump - (site + 5));
+        if (Put(site, site, call, 5) != Write::Skipped)  // site's current bytes are by definition "expected"
             ++done;
     }
     return done;
@@ -354,9 +466,13 @@ static void Start()
         if (!g_want[f])
             continue;
         int n = SetFeature(f, true, nullptr);
+        int hooks = InstallCallHooks(f);
         if (k_features[f].live)
             g_applied[f] = true;
-        Log("%s on (%d exe patches now, script patches as scripts load)", k_features[f].id, n);
+        if (hooks)
+            Log("%s on (%d exe patches, %d call hooks)", k_features[f].id, n, hooks);
+        else
+            Log("%s on (%d exe patches now, script patches as scripts load)", k_features[f].id, n);
     }
     Log(HookExeImport() ? "script hook installed" : "script hook FAILED: script patches are off");
     if (IniFlag("perf", "no_power_throttling", 1))

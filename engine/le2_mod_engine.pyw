@@ -50,6 +50,26 @@ PERF = [
      "Windows 11 can run background game threads (streaming, audio) on efficiency settings. This opts the game out."),
 ]
 
+# Texture streaming budget. The game gives the texture cache 768 MiB / 1.5 GiB / 3 GiB (Low/Medium/High texture
+# quality) whatever the GPU has; when that fills it drops detail and blocks mip upgrades for 5 s.
+STREAMING = [
+    ("default", "Game default (3 GiB on High)", 0),
+    ("perf_streaming", "Boosted: 6 GiB, faster refresh (12 GB+ GPUs)", 12),
+    ("perf_streaming_aggressive", "Maximum: 12 GiB, refresh every frame, 1 s recovery (16 GB+ GPUs)", 16),
+]
+
+
+def gpu_vram_gb():
+    """Dedicated VRAM of the first NVIDIA GPU via nvidia-smi, or None."""
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=5,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        return int(out.stdout.split()[0]) / 1024
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+        return None
+
+
 # Graphics settings the game reads from settings.json. Values are the ones the game itself uses, plus clearly marked
 # experimental steps. key path -> (label, choices[(value, text)])
 LOOKS = [
@@ -190,6 +210,8 @@ class ModEngine(tk.Tk):
             self.vars[fid] = var
             ready = fid in self.features
             text = label if ready else f"{label}  (not in this build yet)"
+            if ready and self.features[fid].get("experimental"):
+                text += "  (experimental)"
             cb = ttk.Checkbutton(tab, text=text, variable=var, command=self._write_ini)
             if not ready:
                 cb.state(["disabled"])
@@ -205,6 +227,20 @@ class ModEngine(tk.Tk):
             self.vars[key] = var
             ttk.Checkbutton(tab, text=label, variable=var, command=self._write_ini).grid(sticky="w", pady=(4, 0))
             ttk.Label(tab, text=help_text, style="Small.TLabel", wraplength=440).grid(sticky="w", padx=(24, 0))
+        ttk.Separator(tab).grid(sticky="ew", pady=10)
+        ttk.Label(tab, text="Texture streaming (fixes pop-in and textures stuck at low detail):").grid(sticky="w")
+        self.streaming = tk.StringVar(value="default")
+        vram = gpu_vram_gb()
+        for key, label, min_gb in STREAMING:
+            rb = ttk.Radiobutton(tab, text=label, value=key, variable=self.streaming, command=self._write_ini)
+            if key != "default" and key not in self.features:
+                rb.state(["disabled"])
+            rb.grid(sticky="w", padx=(12, 0), pady=1)
+        hint = "Use Texture quality: High (Looks tab)."
+        if vram:
+            best = max((s for s in STREAMING if s[2] <= vram), key=lambda s: s[2])
+            hint = f"Your GPU has {vram:.0f} GB: '{best[1].split(':')[0]}' fits. " + hint
+        ttk.Label(tab, text=hint, style="Small.TLabel", wraplength=440).grid(sticky="w", padx=(24, 0))
         ttk.Separator(tab).grid(sticky="ew", pady=10)
         ttk.Label(tab, text="NVIDIA driver profile (optional, asks for admin):").grid(sticky="w")
         row = ttk.Frame(tab)
@@ -313,11 +349,20 @@ class ModEngine(tk.Tk):
         path = self._ini_path()
         cfg = configparser.ConfigParser()
         if path and path.is_file():
-            cfg.read(path, encoding="utf-8")
+            try:
+                cfg.read(path, encoding="utf-8-sig")  # -sig: Notepad may add a BOM
+            except configparser.Error:
+                self._say("le2mods.ini couldn't be read; it will be rewritten on the next change.")
         for fid, _ in MODS:
             self.vars[fid].set(cfg.getboolean("mods", fid, fallback=False))
         for key, section, _, _ in PERF:
             self.vars[key].set(cfg.getboolean(section, key, fallback=True))
+        level = "default"
+        for key, _, _ in STREAMING[1:]:
+            if cfg.getboolean("mods", key, fallback=False):
+                level = key
+        if hasattr(self, "streaming"):
+            self.streaming.set(level)
 
     def _write_ini(self):
         path = self._ini_path()
@@ -327,6 +372,8 @@ class ModEngine(tk.Tk):
         cfg = configparser.ConfigParser()
         cfg["mods"] = {fid: "1" if self.vars[fid].get() else "0" for fid, _ in MODS}
         cfg["mods"]["perf_default_caps"] = "1" if self.vars["perf_default_caps"].get() else "0"
+        for key, _, _ in STREAMING[1:]:  # at most one: both rewrite the same instructions
+            cfg["mods"][key] = "1" if self.streaming.get() == key else "0"
         cfg["perf"] = {"no_power_throttling": "1" if self.vars["no_power_throttling"].get() else "0"}
         tmp = path.with_suffix(".tmp")
         with open(tmp, "w", encoding="utf-8") as f:

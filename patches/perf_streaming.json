@@ -1,0 +1,22 @@
+{
+  "feature": "perf_streaming",
+  "live": false,
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0x5998e0",
+      "expect": "b8 00 00 00 02 48 3b c8 48 0f 43 c1",
+      "replace": "48 8d 04 4d 00 00 00 00 90 90 90 90",
+      "why": "SetTextureBudget(bytes) 0x1405998e0: 'mov eax,32MiB; cmp; cmovae' (min-clamp) -> 'lea rax,[rcx*2]; nop x4'. Texture streaming budget doubles: Low 1.5 GiB, Medium 3 GiB, High 6 GiB (64 GiB max clamp kept). Fewer pressure evictions and far fewer 5 s upgrade freezes."
+    },
+    {
+      "module": "exe",
+      "rva": "0x569433",
+      "expect": "f3 0f 10 15 19 c8 f7 00",
+      "replace": "f3 0f 10 15 39 5d f7 00",
+      "why": "Mip-requirement throttle 0x140569433: load 0.5 (0x1414df174) instead of the shared 0.25 (0x1414e5c54), so each frame re-evaluates max(80, 50%) of objects and 50% of levels: a full sweep every 2 frames instead of 4."
+    }
+  ],
+  "evidence": "Graphics-apply 0x140d8a9c0 maps settings quality.textures (local [rbp+0xf], from quality struct +0x48) to: Low -> SetTexMaxLog2A(10)/B(11)/SetTextureBudget(0x30000000=768 MiB); Medium -> 11/12/0x60000000=1.5 GiB; High -> 16/16/0xC0000000=3 GiB (0x140d8ac20..0x140d8ac90). SetTextureBudget 0x1405998e0 clamps to [32 MiB, 64 GiB] and stores global 0x141edeb10; only callers are those 3 sites. Texture cache copies it to cache+0x168 (0x140563b03 init, 0x1405772ba per-frame). Per-frame cache update 0x140577070: free = budget - used (used = 0x141ed7918, a soft counter adjusted by per-texture resident sizes [tex+0xd0] at 0x140538a87/0x14057a340/0x1405b1d5b - no up-front reservation); pressure flag cache+0x162 = (free/budget <= 0.05, const 0x1414dc854); if free <= 16 MiB, cache+0x150 = now. Request resolver 0x1405b9ba0 (called once from 0x1405bcb22): under pressure queues up to 16 mip DOWNGRADES per call; mip UPGRADES (max 4 per call) only once (now - cache+0x150) >= 5000 ms (.data qword 0x141e54d48 = 5000, single reader 0x1405b9d16). So when the 3 GiB High budget fills, high mips are dropped and no upgrade happens until 5 s after memory frees: the 'stuck at low detail' symptom. Separately, 'Calculate Object Mip Requirements' 0x140569320 re-evaluates only max(80, round(0.25*objects)) objects and max(1, round(0.25*levels)) levels per frame (shared const 0.25 at 0x1414e5c54 loaded once into xmm2 at 0x140569433 for both). NOT verified in game: frame-time cost, real VRAM use, WDDM behaviour when the budget exceeds the card's VRAM.",
+  "risk": "Budget is a soft accounting limit; real VRAM grows only as textures are needed. High at 6 GiB plus the VR render targets fits 12 GB+ cards; on 8 GB cards WDDM may page textures to system RAM (stutter) - leave off there. Settings are re-applied on every graphics-settings apply, so this holds after menu changes. Mip-requirement job does ~2x CPU work (jobified across workers). Mutually exclusive with perf_streaming_aggressive (same bytes): enable one; the second logs 'skipped'. Nothing written to saves."
+}

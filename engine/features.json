@@ -1,34 +1,68 @@
 {
   "boost_brake_movement": {
     "live": false,
-    "patches": 7
+    "patches": 7,
+    "call_hooks": 0,
+    "experimental": false
   },
   "cure_gun_permanent": {
     "live": true,
-    "patches": 2
+    "patches": 2,
+    "call_hooks": 0,
+    "experimental": false
   },
   "god_mode": {
     "live": true,
-    "patches": 2
+    "patches": 2,
+    "call_hooks": 0,
+    "experimental": false
   },
   "keypad_any_code": {
     "live": false,
-    "patches": 3
+    "patches": 3,
+    "call_hooks": 0,
+    "experimental": false
   },
   "perf_default_caps": {
     "live": false,
-    "patches": 2
+    "patches": 2,
+    "call_hooks": 0,
+    "experimental": false
+  },
+  "perf_streaming": {
+    "live": false,
+    "patches": 2,
+    "call_hooks": 0,
+    "experimental": false
+  },
+  "perf_streaming_aggressive": {
+    "live": false,
+    "patches": 3,
+    "call_hooks": 0,
+    "experimental": false
   },
   "signal_boundary_limit": {
     "live": false,
-    "patches": 2
+    "patches": 2,
+    "call_hooks": 0,
+    "experimental": false
+  },
+  "tool_range_1000": {
+    "live": false,
+    "patches": 0,
+    "call_hooks": 8,
+    "experimental": true
   },
   "unlimited_thrusters": {
     "live": true,
-    "patches": 1
+    "patches": 1,
+    "call_hooks": 0,
+    "experimental": false
   },
   "web_receivers_disabled": {
     "live": true,
-    "patches": 1
+    "patches": 1,
+    "call_hooks": 0,
+    "experimental": false
   }
 }

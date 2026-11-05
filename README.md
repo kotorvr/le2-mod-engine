@@ -20,11 +20,19 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 | Unlimited thrusters | ready | Boost, brake and thrusters never drain suit power. Live. |
 | Signal and boundary limit | ready | No "signal low/lost" warning, no out-of-bounds death. |
 | Web receivers stay disabled | ready | A web receiver you disable doesn't switch itself back on after 5 s. Live. |
-| Tool range 1000 | in progress | Tool reach of 1000. |
+| Tool range 1000 | experimental | Magehand, cutter and faraday projector reach set to 1000 when their tool data loads. IO scanner and cure gun not covered yet. |
 | Any four digit keypad code | ready | Keypad doors accept any code. |
 
 **Performance**
 
+- **Texture streaming budget – the real pop-in fix.** The game gives its texture cache a fixed budget from the
+  Texture quality setting: 768 MiB (Low), 1.5 GiB (Medium), **3 GiB (High)**, no matter how much VRAM the card has
+  (`SetTextureBudget`, `0x1405998e0`, fed from `0x140d8a9c0`). When the cache gets within 16 MiB of that budget it
+  drops high-res mips and **blocks every mip upgrade for 5 seconds** (`0x141e54d48`), and each frame it only
+  re-evaluates the mip needs of a quarter of the objects. That is the "textures stuck at low detail" problem.
+  The app offers:
+  - *Boosted* (12 GB+ GPUs): budget ×2 (High = 6 GiB), half the objects re-evaluated per frame.
+  - *Maximum* (16 GB+ GPUs): budget ×4 (High = 12 GiB), every object every frame, upgrades resume after 1 s.
 - **Default-quality caps removed.** When the game builds its default settings it silently forces texture quality to
   Medium on GPUs under 8000 MB, to Low under 6000 MB, and lowers the preset on PCs under 16 GB RAM
   (`0x140d8af60`). The loader removes those caps.

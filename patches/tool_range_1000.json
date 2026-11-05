@@ -1,0 +1,145 @@
+{
+  "feature": "tool_range_1000",
+  "live": false,
+  "experimental": true,
+  "call_hooks": [
+    {
+      "site": "0x71d1b3",
+      "callee": "0x6d1370",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xf8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xfc",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0x731579",
+      "callee": "0x6d1370",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xf8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xfc",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0xa14a83",
+      "callee": "0x6d1370",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xf8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xfc",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0xa1238b",
+      "callee": "0x95bed0",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0xa417e9",
+      "callee": "0x95bed0",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0xa1249b",
+      "callee": "0x95d290",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xf8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xfc",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0xa4223d",
+      "callee": "0x95d290",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xf8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xfc",
+          "float": 1000.0
+        }
+      ]
+    },
+    {
+      "site": "0x9fd9d7",
+      "callee": "0x9600f0",
+      "arg": 0,
+      "writes": [
+        {
+          "offset": "0xe8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xf8",
+          "float": 1000.0
+        },
+        {
+          "offset": "0xfc",
+          "float": 1000.0
+        }
+      ]
+    }
+  ],
+  "evidence": "Each tool's component data (CD) is loaded by its own Serialize(cd=rcx, stream=rdx): magehand 0x1406d1370, cutter 0x14095bed0, faraday 0x14095d290 / 0x1409600f0 (field names from the serializers' string table: raydistance +0xe8 shared by every tool CD; firingrange +0xf8, projectionrange +0xfc on magehand/faraday). The loader redirects each call site and writes 1000.0 into those fields after the original returns. Call sites checked: rcx = stack CD buffer (lea rcx,[rsp+0x20]) or a CD array element; rdx = stream.",
+  "risk": "Unverified in game that these fields are the reach the tools actually use. The per-upgrade-level arrays (magehand rayranges +0x118, cutter cutterranges +0xf8) are not touched until their layout is confirmed, so the cutter may still be limited by cutterranges. IO scanner and cure gun ranges not found. Not live: values are read when a level loads."
+}
