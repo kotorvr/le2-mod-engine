@@ -44,6 +44,12 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 sun-cascade size, shadow distance, MSAA, the low-res periphery (`multires`), adaptive-resolution floor, sharpening.
 Your original file is backed up the first time and can be restored with one click.
 
+## Virtual Desktop and OpenXR
+
+The **VR** tab switches the game from the Oculus runtime to OpenXR, so it runs directly on Virtual Desktop's VDXR (or SteamVR) with no Revive. It uses the OpenXR bridge from [lone-echo-openxr](https://github.com/morekitsch/lone-echo-openxr) (Apache-2.0, licenses in `third_party/`): the loader points the game's LibOVR shim at `bin\win10\openxr\` through `LIBOVR_DLL_DIR` and skips the shim's signature check on that DLL. Nothing is installed system-wide, and picking **Oculus** removes the folder again.
+
+Controller vibration is carried over: the game submits a left and a right haptics buffer every frame through `ovr_SubmitControllerVibration`, which the bridge turns into OpenXR haptic pulses. Only the bridge's runtime DLL and the Khronos loader are used, not its platform replacement or its game-file patches.
+
 ## Install
 
 1. Download the release and unzip it anywhere.
@@ -101,6 +107,7 @@ rebuild. `research/` holds features that were found but need more than byte patc
 
 - [echo-symbols](https://github.com/Dualgame/echo-symbols) for the CSymbol64 names that make the script DLLs readable.
 - [Lone Echo Mod Loader](https://github.com/heisthecat31/loneechomodloader) for the original Lone Echo approach.
+- [lone-echo-openxr](https://github.com/morekitsch/lone-echo-openxr) by morekitsch, based on [libovr-openxr-rs](https://github.com/TesseractCat/libovr-openxr-rs), for the OpenXR runtime.
 
 No game files are included or modified on disk. Lone Echo II is © Ready At Dawn / Meta; this project is not affiliated
 with them.

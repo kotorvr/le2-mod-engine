@@ -3,7 +3,9 @@
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 python tools/gen_winmm_proxy.py
+if ($LASTEXITCODE -ne 0) { throw "gen_winmm_proxy failed" }
 python tools/gen_patches.py
+if ($LASTEXITCODE -ne 0) { throw "gen_patches failed" }
 New-Item -ItemType Directory -Force build | Out-Null
 & x86_64-w64-mingw32-clang++ -std=c++17 -O2 -s -shared -static -Wall `
     -o build/winmm.dll loader/src/main.cpp loader/src/winmm_stubs.S loader/src/winmm.def

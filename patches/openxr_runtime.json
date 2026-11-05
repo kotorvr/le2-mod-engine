@@ -1,0 +1,15 @@
+{
+  "feature": "openxr_runtime",
+  "live": false,
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0x117f431",
+      "expect": "85 c0 75 11",
+      "replace": "90 90 eb 11",
+      "why": "LibOVR loader (0x14117f390): 'if the runtime DLL's Authenticode signature check failed, refuse it' becomes an unconditional load, so the OpenXR-backed LibOVRRT64_1.dll in bin/win10/openxr can be used."
+    }
+  ],
+  "evidence": "Same edit lone-echo-openxr applies to the signed Oculus build, located here at the call to the WinVerifyTrust wrapper 0x14117f4e0. The loader also sets LIBOVR_DLL_DIR, which the LibOVR shim reads at 0x141179f1c. Haptics path checked: the game submits left (type 1) and right (type 2) buffers each frame through ovr_SubmitControllerVibration (0x1406b9b2d / 0x1406b9b42) and never calls ovr_SetControllerVibration, ovr_GetTouchHapticsDesc or ovr_GetControllerVibrationState, which are stubs in that runtime.",
+  "risk": "Only relaxes the check on the VR runtime DLL. It does not touch the Oculus Platform layer (pnsovr.dll)."
+}

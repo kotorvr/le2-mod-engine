@@ -108,6 +108,15 @@ static const PatchBytes k_max_upgrades[] = {
     { nullptr, 0xa6bc17, k_max_upgrades_11_e, k_max_upgrades_11_r, 4 },
 };
 
+static const CallHook k_openxr_runtime_hooks[] = {
+    { 0, 0, 0, nullptr, 0 },
+};
+static const uint8_t k_openxr_runtime_0_e[] = { 0x85, 0xc0, 0x75, 0x11 };
+static const uint8_t k_openxr_runtime_0_r[] = { 0x90, 0x90, 0xeb, 0x11 };
+static const PatchBytes k_openxr_runtime[] = {
+    { nullptr, 0x117f431, k_openxr_runtime_0_e, k_openxr_runtime_0_r, 4 },
+};
+
 static const CallHook k_perf_default_caps_hooks[] = {
     { 0, 0, 0, nullptr, 0 },
 };
@@ -205,6 +214,7 @@ static const FeatureDef k_features[] = {
     { "god_mode", true, k_god_mode, 2, k_god_mode_hooks, 0 },
     { "keypad_any_code", false, k_keypad_any_code, 3, k_keypad_any_code_hooks, 0 },
     { "max_upgrades", false, k_max_upgrades, 12, k_max_upgrades_hooks, 0 },
+    { "openxr_runtime", false, k_openxr_runtime, 1, k_openxr_runtime_hooks, 0 },
     { "perf_default_caps", false, k_perf_default_caps, 2, k_perf_default_caps_hooks, 0 },
     { "perf_streaming", false, k_perf_streaming, 2, k_perf_streaming_hooks, 0 },
     { "perf_streaming_aggressive", false, k_perf_streaming_aggressive, 3, k_perf_streaming_aggressive_hooks, 0 },

@@ -588,6 +588,52 @@ static void DisablePowerThrottling()
         Log("power throttling (EcoQoS) off for loneecho2.exe");
 }
 
+// OpenXR mode: the game's LibOVR shim loads LibOVRRT64_1.dll from LIBOVR_DLL_DIR first. lone-echo-openxr's runtime in
+// bin\win10\openxr answers those calls through OpenXR, so the game runs on VDXR (Virtual Desktop) or SteamVR with no
+// Oculus runtime in the path. We run before the game's CRT starts, so it sees these variables.
+static void SetUpOpenXr()
+{
+    int feature = -1;
+    for (int f = 0; f < kFeatureCount; ++f)
+        if (strcmp(k_features[f].id, "openxr_runtime") == 0)
+            feature = f;
+    if (feature < 0 || !g_want[feature])
+        return;
+    wchar_t dir[MAX_PATH], dll[MAX_PATH];
+    wcscpy_s(dir, g_dir);
+    wcscat_s(dir, L"openxr\\");
+    wcscpy_s(dll, dir);
+    wcscat_s(dll, L"LibOVRRT64_1.dll");
+    if (GetFileAttributesW(dll) == INVALID_FILE_ATTRIBUTES)
+    {
+        Log("openxr: %ls is missing: staying on the Oculus runtime", dll);
+        g_want[feature] = false;
+        return;
+    }
+    SetEnvironmentVariableW(L"LIBOVR_DLL_DIR", dir);
+    SetDllDirectoryW(dir);  // the runtime finds openxr_loader.dll by plain DLL search
+    if (IniFlag("vr", "vdxr", 0))
+    {
+        wchar_t json[MAX_PATH];
+        DWORD n = GetEnvironmentVariableW(L"ProgramW6432", json, MAX_PATH);
+        if (n > 0 && n < MAX_PATH - 80)
+        {
+            wcscat_s(json, L"\\Virtual Desktop Streamer\\OpenXR\\virtualdesktop-openxr.json");
+            if (GetFileAttributesW(json) != INVALID_FILE_ATTRIBUTES)
+            {
+                SetEnvironmentVariableW(L"XR_RUNTIME_JSON", json);
+                Log("openxr: using Virtual Desktop's VDXR runtime");
+            }
+            else
+                Log("openxr: VDXR not found: using the system OpenXR runtime");
+        }
+    }
+    else
+        Log("openxr: using the system OpenXR runtime");
+    if (IniFlag("debug", "openxr_log", 0))
+        SetEnvironmentVariableW(L"LIBOVR_OPENXR_LOG", L"stencil");  // startup/shutdown markers, no per-call cost
+}
+
 static void Start()
 {
     InitializeCriticalSection(&g_lock);
@@ -603,6 +649,7 @@ static void Start()
     IniChanged();  // remember the current timestamp
     ReadConfig();
     Log("config %ls: %zu bytes", g_ini, g_iniText.size());
+    SetUpOpenXr();
     for (int f = 0; f < kFeatureCount; ++f)
     {
         if (!g_want[f])

@@ -29,6 +29,12 @@
     "call_hooks": 0,
     "experimental": false
   },
+  "openxr_runtime": {
+    "live": false,
+    "patches": 1,
+    "call_hooks": 0,
+    "experimental": false
+  },
   "perf_default_caps": {
     "live": false,
     "patches": 2,

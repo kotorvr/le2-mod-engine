@@ -70,6 +70,13 @@ def gpu_vram_gb():
         return None
 
 
+OPENXR_DIR = HERE / "openxr"
+VR_MODES = [
+    ("oculus", "Oculus (game default)"),
+    ("vdxr", "Virtual Desktop (VDXR, no Revive or SteamVR)"),
+    ("openxr", "OpenXR: whichever runtime is active (for example SteamVR)"),
+]
+
 # Graphics settings the game reads from settings.json. Values are the ones the game itself uses, plus clearly marked
 # experimental steps. key path -> (label, choices[(value, text)])
 LOOKS = [
@@ -196,6 +203,7 @@ class ModEngine(tk.Tk):
         tabs.add(self._mods_tab(tabs), text="Mods")
         tabs.add(self._perf_tab(tabs), text="Performance")
         tabs.add(self._looks_tab(tabs), text="Looks")
+        tabs.add(self._vr_tab(tabs), text="VR")
 
         ttk.Separator(outer).grid(sticky="ew", pady=(12, 8))
         self.status = ttk.Label(outer, text="Ready")
@@ -272,6 +280,42 @@ class ModEngine(tk.Tk):
         self._load_looks()
         return tab
 
+    def _vr_tab(self, parent):
+        tab = ttk.Frame(parent, padding=(10, 10))
+        ttk.Label(tab, text="Which VR runtime the game talks to. Applies on the next launch.",
+                  wraplength=460).grid(sticky="w", pady=(0, 10))
+        self.vr_mode = tk.StringVar(value="oculus")
+        ready = "openxr_runtime" in self.features and OPENXR_DIR.joinpath("LibOVRRT64_1.dll").is_file()
+        for key, label in VR_MODES:
+            rb = ttk.Radiobutton(tab, text=label, value=key, variable=self.vr_mode, command=self._set_vr_mode)
+            if key != "oculus" and not ready:
+                rb.state(["disabled"])
+            rb.grid(sticky="w", pady=2)
+        ttk.Label(tab, text="OpenXR needs no Revive: lone-echo-openxr bridges the game's Oculus calls straight to "
+                            "OpenXR. Connect from the headset first, then start the game. On the very first OpenXR "
+                            "run the view can look narrow: restart once and it's correct.",
+                  style="Small.TLabel", wraplength=440).grid(sticky="w", pady=(8, 0))
+        return tab
+
+    def _set_vr_mode(self):
+        self._sync_openxr_files()
+        self._write_ini()
+
+    def _sync_openxr_files(self):
+        """bin\\win10\\openxr holds the runtime only while an OpenXR mode is selected and the loader is installed."""
+        if self.bin_dir is None:
+            return
+        target = self.bin_dir / "openxr"
+        try:
+            if self._installed() and self.vr_mode.get() != "oculus":
+                target.mkdir(exist_ok=True)
+                for dll in OPENXR_DIR.glob("*.dll"):
+                    shutil.copy2(dll, target / dll.name)
+            elif target.is_dir():
+                shutil.rmtree(target)
+        except PermissionError:
+            messagebox.showerror(APP, "Close the game first: the OpenXR files are in use.")
+
     # -------------------------------------------------------------- game + install
     def _pick_initial_game(self):
         saved = self.state_data.get("game")
@@ -328,12 +372,14 @@ class ModEngine(tk.Tk):
         try:
             if self._installed():
                 target.unlink()
+                self._sync_openxr_files()
                 self._say("Loader removed. The game runs unmodded.")
             else:
                 if not LOADER.is_file():
                     messagebox.showerror(APP, f"winmm.dll is missing next to the Mod Engine:\n{LOADER}")
                     return
                 shutil.copy2(LOADER, target)
+                self._sync_openxr_files()
                 self._write_ini()
                 self._say("Loader installed. Start the game as usual.")
         except PermissionError:
@@ -363,6 +409,11 @@ class ModEngine(tk.Tk):
                 level = key
         if hasattr(self, "streaming"):
             self.streaming.set(level)
+        if cfg.getboolean("mods", "openxr_runtime", fallback=False):
+            self.vr_mode.set("vdxr" if cfg.getboolean("vr", "vdxr", fallback=False) else "openxr")
+        else:
+            self.vr_mode.set("oculus")
+        self._ini_debug = dict(cfg["debug"]) if cfg.has_section("debug") else {}
 
     def _write_ini(self):
         path = self._ini_path()
@@ -374,7 +425,11 @@ class ModEngine(tk.Tk):
         cfg["mods"]["perf_default_caps"] = "1" if self.vars["perf_default_caps"].get() else "0"
         for key, _, _ in STREAMING[1:]:  # at most one: both rewrite the same instructions
             cfg["mods"][key] = "1" if self.streaming.get() == key else "0"
+        cfg["mods"]["openxr_runtime"] = "1" if self.vr_mode.get() != "oculus" else "0"
+        cfg["vr"] = {"vdxr": "1" if self.vr_mode.get() == "vdxr" else "0"}
         cfg["perf"] = {"no_power_throttling": "1" if self.vars["no_power_throttling"].get() else "0"}
+        if getattr(self, "_ini_debug", None):
+            cfg["debug"] = self._ini_debug  # kept as the user set it
         tmp = path.with_suffix(".tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             f.write("; Written by the Lone Echo II Mod Engine. 1 = on.\n")

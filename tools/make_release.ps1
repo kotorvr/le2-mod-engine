@@ -10,6 +10,9 @@ $stage = Join-Path $root "dist\LE2-Mod-Engine-$Version"
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$stage\engine" | Out-Null
 Copy-Item engine\le2_mod_engine.pyw, engine\nvidia_profile.py, engine\features.json, engine\winmm.dll "$stage\engine\"
+New-Item -ItemType Directory -Force "$stage\engine\openxr" | Out-Null
+Copy-Item engine\openxr\LibOVRRT64_1.dll, engine\openxr\openxr_loader.dll "$stage\engine\openxr\"
+Copy-Item third_party "$stage\third_party" -Recurse
 Copy-Item README.md, LICENSE $stage
 @"
 @echo off
