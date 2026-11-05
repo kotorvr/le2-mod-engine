@@ -1,0 +1,7 @@
+{
+  "feature": "all_gadgets",
+  "live": false,
+  "runtime": true,
+  "evidence": "The story unlocks each tool with one EnableComponentNode on actor 'player' (0x41d2d7311b3a020c): upg_magehand_initial -> R16MageHand 0x9a0ec0a12a0d5418, upg_faraday_initial -> R16FaradayProjector 0x530551356665db1e, upg_curegun_unlock -> R16CureGunTool 0xe86b0250046a3130 (r16_player_upgrade, b895d8092e5f8d55.dll). The loader repeats that from the game thread (CR16Game vtable +0x1a0 Update, slot 0x1414e3020 -> 0x140148640): FindActor 0x1404ae730 over the loaded spaces (game+0x1f98 pairs, count game+0x1fc8), GetComponentSystem 0x140128760, component lookup via CS vtable +0x1a8, EnableComponent 0x1407064e0 (queued). Code: loader/src/main.cpp, namespace Gadgets.",
+  "risk": "Writes game state the save keeps: unticking the switch does not take the tools away. Story steps that wait for a tool may complete early. The cure gun may also need the upgrade script's own curegun_unlocked flag for some later checks (not set)."
+}

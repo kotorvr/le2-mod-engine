@@ -14,7 +14,7 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 |---|---|---|
 | God mode | ready | Jack can't die. Switches on and off while the game runs. |
 | Cure Gun: permanent neutralization | ready | Cured creep never comes back, and cured cysts stay deflated. |
-| All gadgets | not yet | Needs the loader to enable the tools on Jack the way the story does, which the save then keeps. See `research/all_gadgets.json`. |
+| All gadgets | ready | Gives Jack the MageHand, Faraday Projector and Cure Gun as soon as he's in a level, with the same engine call the story uses. **Your save keeps them**: unticking the switch doesn't take them away. |
 | Maximum upgrades | ready | Cutter, faraday projector and magehand work at their top upgrade level (2). Read-side only: nothing is written to your save. Radiation shield / unsticky creep not covered yet. |
 | Boost, brake, movement | ready | Boost ×2 (acceleration and burst), brake ×2, hand thrusters ×1.5, boost cooldown 2 s → 0.05 s. |
 | Unlimited thrusters | ready | Boost, brake and thrusters never drain suit power. Live. |

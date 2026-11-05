@@ -1,7 +1,0 @@
-{
-  "feature": "all_gadgets",
-  "live": false,
-  "patches": [],
-  "evidence": "Not achievable as read-side byte patches. Availability is not a flag on the tool entry: CR16ToolAbilityCS entry (stride 0xb78) has +0x110 = hand (slot +0x310 IsActive(idx, hand), 2 = any), +0xac flags (bit1 out/active, bits 2-3 request state; slots +0x3a0/+0x3b0/+0x3d0), +0xab0 upgrade level. plr_tool_selector (37a286d1ddfde95c.dll) builds the wheel from the engine's generic ComponentEnabledExpression on Jack's tool components ('ccenable', count_enabled_tools, tool_enabled; 'abilitymgr' holds R16ToolAbilityManager), and the story grants a tool by enabling that component (r16_player_upgrade upg_magehand_initial / upg_faraday_initial / upg_curegun_unlock, MNR16GiveCureGunNode). A disabled component is not in its CS's update set, so faking 'enabled' to the selector would show a tool that never activates, and forcing the generic component-enabled check would enable every disabled component in the game.",
-  "risk": "Recommended route (loader code, writes state): once Jack exists, on the game thread, enable the MageHand, FaradayProjector and CureGun components on Jack's actor through the engine's component-enable path (what EnableComponentNode does), or replay r16_player_upgrade's upg_*_initial calls (dispatcher rva 0xa970, setup_bindings slot +0xb8). Either way the enabled state is saved and story waits for the tool (MNR16WaitForPlayerToolNode) may complete early."
-}

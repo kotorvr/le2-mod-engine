@@ -70,5 +70,10 @@
     "patches": 1,
     "call_hooks": 0,
     "experimental": false
+  },
+  "all_gadgets": {
+    "live": false,
+    "runtime": true,
+    "experimental": false
   }
 }

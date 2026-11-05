@@ -24,9 +24,13 @@ def c_str(text):
 
 def main():
     features = []
+    runtime = []
     for path in sorted(SRC.glob("*.json")):
         spec = json.loads(path.read_text(encoding="utf-8"))
         rows = spec.get("patches", []) + spec.get("values", [])
+        if spec.get("runtime"):
+            runtime.append((path.stem, spec))  # implemented in loader code, listed for the app only
+            continue
         if not rows and not spec.get("call_hooks"):
             print(f"skip {path.name}: no patches", file=sys.stderr)
             continue
@@ -72,6 +76,8 @@ def main():
     manifest = {fid: {"live": bool(spec.get("live")), "patches": len(rows),
                       "call_hooks": len(spec.get("call_hooks", [])),
                       "experimental": bool(spec.get("experimental"))} for fid, spec, rows in features}
+    for fid, spec in runtime:
+        manifest[fid] = {"live": False, "runtime": True, "experimental": bool(spec.get("experimental"))}
     (ROOT / "engine" / "features.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)} and engine/features.json: {len(features)} features")
 

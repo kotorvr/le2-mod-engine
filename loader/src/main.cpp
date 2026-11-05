@@ -440,6 +440,115 @@ static bool HookExeImport()
     return false;
 }
 
+// ---------------------------------------------------------------- all gadgets (runtime)
+// The story unlocks MageHand, Faraday Projector and Cure Gun with one EnableComponentNode each (r16_player_upgrade's
+// upg_magehand_initial / upg_faraday_initial / upg_curegun_unlock): actor "player", enable = 1. We make the same
+// engine call from the game thread, by wrapping CR16Game::Update (vtable +0x1a0). The engine saves the result.
+namespace Gadgets
+{
+    const uint32_t kVtableSlot = 0x14e3020;  // CR16Game vtable +0x1a0 (rva)
+    const uint32_t kUpdate = 0x148640;       // its original target (rva), checked before swapping
+    const uint32_t kFindActor = 0x4ae730;    // bool (space, actorHash, CGameSpace** spaceOut, uint64* ref)
+    const uint32_t kGetSystem = 0x128760;    // CS* (space, typeHash)
+    const uint32_t kEnable = 0x7064e0;       // (cs, uint16 componentIndex, int enable) - queued, safe mid-frame
+    const uint64_t kPlayer = 0x41d2d7311b3a020cULL;
+    const struct { uint64_t type; const char* name; } kTools[] = {
+        { 0x9a0ec0a12a0d5418ULL, "MageHand" },
+        { 0x530551356665db1eULL, "FaradayProjector" },
+        { 0xe86b0250046a3130ULL, "CureGunTool" },
+    };
+
+    typedef uint64_t (*UpdateFn)(uint64_t, uint64_t, uint64_t, uint64_t);
+    typedef int (*FindActorFn)(void*, uint64_t, void**, uint64_t*);
+    typedef void* (*GetSystemFn)(void*, uint64_t);
+    typedef uint32_t* (*FindComponentFn)(void*, uint32_t*, uint64_t, uint64_t);
+    typedef void (*EnableFn)(void*, uint16_t, int);
+
+    static uint8_t* g_exe;
+    static UpdateFn g_original;
+    static unsigned g_calls = 0;
+    static uint32_t g_phasesSeen = 0;   // bit per phase value 0..31 seen in the first calls
+    static void* g_doneFor = nullptr;   // Jack's space when the tools were last granted
+    static uint64_t g_doneCount = ~0ULL;
+
+    static void Grant(uint8_t* game)
+    {
+        uint64_t count = *(uint64_t*)(game + 0x1fc8);
+        void** pairs = *(void***)(game + 0x1f98);
+        if (pairs == nullptr || count == 0 || count > 256)
+            return;
+        auto findActor = (FindActorFn)(g_exe + kFindActor);
+        for (uint64_t i = 0; i < count; ++i)
+        {
+            void* space = pairs[i * 2 + 1];
+            if (space == nullptr)
+                continue;
+            void* jackSpace = space;
+            uint64_t ref = 0;
+            if (!findActor(space, kPlayer, &jackSpace, &ref) || (uint16_t)ref == 0xffff || jackSpace == nullptr)
+                continue;
+            if (jackSpace == g_doneFor && count == g_doneCount)
+                return;  // already granted in this set of loaded levels
+            int enabled = 0;
+            for (const auto& tool : kTools)
+            {
+                void* cs = ((GetSystemFn)(g_exe + kGetSystem))(jackSpace, tool.type);
+                if (cs == nullptr)
+                    continue;
+                uint32_t out = 0xffffffff;
+                auto find = (FindComponentFn)((*(void***)cs)[0x1a8 / 8]);
+                uint32_t* found = find(cs, &out, ref, tool.type);
+                uint16_t idx = (uint16_t)(found ? *found : 0xffff);
+                if (idx == 0xffff)
+                {
+                    Log("all_gadgets: Jack has no %s component here", tool.name);
+                    continue;
+                }
+                ((EnableFn)(g_exe + kEnable))(cs, idx, 1);
+                ++enabled;
+                Log("all_gadgets: %s enabled (component %u)", tool.name, idx);
+            }
+            g_doneFor = jackSpace;
+            g_doneCount = count;
+            if (enabled == 0)
+                Log("all_gadgets: Jack found but no tool components: will retry after the next level load");
+            return;
+        }
+    }
+
+    static uint64_t HookedUpdate(uint64_t game, uint64_t phase, uint64_t r8, uint64_t r9)
+    {
+        uint64_t result = g_original(game, phase, r8, r9);
+        ++g_calls;
+        if (g_calls <= 300 && phase < 32 && !(g_phasesSeen & (1u << phase)))
+        {
+            g_phasesSeen |= 1u << phase;
+            Log("all_gadgets: CR16Game::Update phase %llu seen", (unsigned long long)phase);
+        }
+        if (phase == 1 && game != 0 && g_calls % 120 == 0)
+            Grant((uint8_t*)game);
+        return result;
+    }
+
+    static void Install(uint8_t* exe)
+    {
+        g_exe = exe;
+        auto* slot = (volatile LONG64*)(exe + kVtableSlot);
+        LONG64 expected = (LONG64)(exe + kUpdate);
+        if (*slot != expected)
+        {
+            Log("all_gadgets: CR16Game::Update slot differs (other game build?): off");
+            return;
+        }
+        g_original = (UpdateFn)(exe + kUpdate);
+        DWORD old;
+        VirtualProtect((void*)slot, 8, PAGE_READWRITE, &old);
+        InterlockedExchange64(slot, (LONG64)&HookedUpdate);
+        VirtualProtect((void*)slot, 8, old, &old);
+        Log("all_gadgets: on (tools are granted once Jack is in a level; the game saves them)");
+    }
+}
+
 // ---------------------------------------------------------------- live switches
 static DWORD WINAPI WatchThread(LPVOID)
 {
@@ -508,6 +617,8 @@ static void Start()
             Log("%s on (%d exe patches now, script patches as scripts load)", k_features[f].id, n);
     }
     Log(HookExeImport() ? "script hook installed" : "script hook FAILED: script patches are off");
+    if (IniFlag("mods", "all_gadgets", 0))
+        Gadgets::Install(exe);
     if (IniFlag("perf", "no_power_throttling", 1))
         DisablePowerThrottling();
     HANDLE t = CreateThread(nullptr, 0, WatchThread, nullptr, 0, nullptr);
