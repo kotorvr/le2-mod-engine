@@ -3,28 +3,40 @@
 static const CallHook k_boost_brake_movement_hooks[] = {
     { 0, 0, 0, nullptr, 0 },
 };
-static const uint8_t k_boost_brake_movement_0_e[] = { 0x00, 0x00, 0x80, 0x40 };
-static const uint8_t k_boost_brake_movement_0_r[] = { 0x00, 0x00, 0x00, 0x41 };
-static const uint8_t k_boost_brake_movement_1_e[] = { 0x00, 0x00, 0xc0, 0x3e };
-static const uint8_t k_boost_brake_movement_1_r[] = { 0x00, 0x00, 0x40, 0x3f };
-static const uint8_t k_boost_brake_movement_2_e[] = { 0x00, 0x00, 0x00, 0x40 };
-static const uint8_t k_boost_brake_movement_2_r[] = { 0xcd, 0xcc, 0x4c, 0x3d };
-static const uint8_t k_boost_brake_movement_3_e[] = { 0x00, 0x00, 0x80, 0x3f };
-static const uint8_t k_boost_brake_movement_3_r[] = { 0x00, 0x00, 0x00, 0x40 };
-static const uint8_t k_boost_brake_movement_4_e[] = { 0x00, 0x00, 0x60, 0x3f };
-static const uint8_t k_boost_brake_movement_4_r[] = { 0x00, 0x00, 0xe0, 0x3f };
-static const uint8_t k_boost_brake_movement_5_e[] = { 0x66, 0x66, 0xe6, 0x3e };
-static const uint8_t k_boost_brake_movement_5_r[] = { 0xcd, 0xcc, 0x2c, 0x3f };
-static const uint8_t k_boost_brake_movement_6_e[] = { 0xcd, 0xcc, 0x0c, 0x3f };
-static const uint8_t k_boost_brake_movement_6_r[] = { 0x33, 0x33, 0x53, 0x3f };
+static const uint8_t k_boost_brake_movement_0_e[] = { 0x41, 0x0f, 0x2f, 0xd3, 0x76, 0x1e, 0x0f, 0x57, 0xc0, 0xf3 };
+static const uint8_t k_boost_brake_movement_0_r[] = { 0xf3, 0x0f, 0x59, 0x35, 0x13, 0xca, 0xd6, 0x00, 0xeb, 0x1a };
+static const uint8_t k_boost_brake_movement_1_e[] = { 0x0f, 0x2f, 0x15, 0xd3, 0x50, 0xd8, 0x00, 0x76, 0x1e, 0x0f };
+static const uint8_t k_boost_brake_movement_1_r[] = { 0xf3, 0x0f, 0x59, 0x1d, 0x1e, 0xa6, 0xd7, 0x00, 0xeb, 0x1d };
+static const uint8_t k_boost_brake_movement_2_e[] = { 0x00, 0x00, 0x80, 0x40 };
+static const uint8_t k_boost_brake_movement_2_r[] = { 0x00, 0x00, 0x00, 0x41 };
+static const uint8_t k_boost_brake_movement_3_e[] = { 0x00, 0x00, 0xc0, 0x3e };
+static const uint8_t k_boost_brake_movement_3_r[] = { 0x00, 0x00, 0x40, 0x3f };
+static const uint8_t k_boost_brake_movement_4_e[] = { 0x00, 0x00, 0x00, 0x40 };
+static const uint8_t k_boost_brake_movement_4_r[] = { 0xcd, 0xcc, 0x4c, 0x3d };
+static const uint8_t k_boost_brake_movement_5_e[] = { 0x00, 0x00, 0x80, 0x3f };
+static const uint8_t k_boost_brake_movement_5_r[] = { 0x00, 0x00, 0x00, 0x40 };
+static const uint8_t k_boost_brake_movement_6_e[] = { 0x00, 0x00, 0x60, 0x3f };
+static const uint8_t k_boost_brake_movement_6_r[] = { 0x00, 0x00, 0xe0, 0x3f };
+static const uint8_t k_boost_brake_movement_7_e[] = { 0x66, 0x66, 0xe6, 0x3e };
+static const uint8_t k_boost_brake_movement_7_r[] = { 0xcd, 0xcc, 0xac, 0x3f };
+static const uint8_t k_boost_brake_movement_8_e[] = { 0xcd, 0xcc, 0x0c, 0x3f };
+static const uint8_t k_boost_brake_movement_8_r[] = { 0x33, 0x33, 0xd3, 0x3f };
+static const uint8_t k_boost_brake_movement_9_e[] = { 0x00, 0x00, 0x00, 0x40 };
+static const uint8_t k_boost_brake_movement_9_r[] = { 0x00, 0x00, 0x00, 0x41 };
+static const uint8_t k_boost_brake_movement_10_e[] = { 0x00, 0x00, 0x80, 0x3f };
+static const uint8_t k_boost_brake_movement_10_r[] = { 0x00, 0x00, 0x00, 0x40 };
 static const PatchBytes k_boost_brake_movement[] = {
-    { nullptr, 0x14dcfc4, k_boost_brake_movement_0_e, k_boost_brake_movement_0_r, 4 },
-    { nullptr, 0x14dcfc8, k_boost_brake_movement_1_e, k_boost_brake_movement_1_r, 4 },
-    { nullptr, 0x14dcfcc, k_boost_brake_movement_2_e, k_boost_brake_movement_2_r, 4 },
-    { nullptr, 0x14dd054, k_boost_brake_movement_3_e, k_boost_brake_movement_3_r, 4 },
-    { nullptr, 0x14dd058, k_boost_brake_movement_4_e, k_boost_brake_movement_4_r, 4 },
-    { nullptr, 0x14dd008, k_boost_brake_movement_5_e, k_boost_brake_movement_5_r, 4 },
-    { nullptr, 0x14dd00c, k_boost_brake_movement_6_e, k_boost_brake_movement_6_r, 4 },
+    { nullptr, 0x770121, k_boost_brake_movement_0_e, k_boost_brake_movement_0_r, 10 },
+    { nullptr, 0x762516, k_boost_brake_movement_1_e, k_boost_brake_movement_1_r, 10 },
+    { nullptr, 0x14dcfc4, k_boost_brake_movement_2_e, k_boost_brake_movement_2_r, 4 },
+    { nullptr, 0x14dcfc8, k_boost_brake_movement_3_e, k_boost_brake_movement_3_r, 4 },
+    { nullptr, 0x14dcfcc, k_boost_brake_movement_4_e, k_boost_brake_movement_4_r, 4 },
+    { nullptr, 0x14dd054, k_boost_brake_movement_5_e, k_boost_brake_movement_5_r, 4 },
+    { nullptr, 0x14dd058, k_boost_brake_movement_6_e, k_boost_brake_movement_6_r, 4 },
+    { nullptr, 0x14dd008, k_boost_brake_movement_7_e, k_boost_brake_movement_7_r, 4 },
+    { nullptr, 0x14dd00c, k_boost_brake_movement_8_e, k_boost_brake_movement_8_r, 4 },
+    { nullptr, 0x14dd518, k_boost_brake_movement_9_e, k_boost_brake_movement_9_r, 4 },
+    { nullptr, 0x14dd010, k_boost_brake_movement_10_e, k_boost_brake_movement_10_r, 4 },
 };
 
 static const CallHook k_cure_gun_permanent_hooks[] = {
@@ -195,8 +207,11 @@ static const CallHook k_unlimited_thrusters_hooks[] = {
 };
 static const uint8_t k_unlimited_thrusters_0_e[] = { 0x48, 0x8b, 0xc4 };
 static const uint8_t k_unlimited_thrusters_0_r[] = { 0xc3, 0x8b, 0xc4 };
+static const uint8_t k_unlimited_thrusters_1_e[] = { 0xf3, 0x0f, 0x11, 0x41, 0x48 };
+static const uint8_t k_unlimited_thrusters_1_r[] = { 0x90, 0x90, 0x90, 0x90, 0x90 };
 static const PatchBytes k_unlimited_thrusters[] = {
     { nullptr, 0x70a670, k_unlimited_thrusters_0_e, k_unlimited_thrusters_0_r, 3 },
+    { "4ef64d8f802fab40.dll", 0x8cea, k_unlimited_thrusters_1_e, k_unlimited_thrusters_1_r, 5 },
 };
 
 static const CallHook k_web_receivers_disabled_hooks[] = {
@@ -209,7 +224,7 @@ static const PatchBytes k_web_receivers_disabled[] = {
 };
 
 static const FeatureDef k_features[] = {
-    { "boost_brake_movement", false, k_boost_brake_movement, 7, k_boost_brake_movement_hooks, 0 },
+    { "boost_brake_movement", false, k_boost_brake_movement, 11, k_boost_brake_movement_hooks, 0 },
     { "cure_gun_permanent", false, k_cure_gun_permanent, 2, k_cure_gun_permanent_hooks, 0 },
     { "god_mode", true, k_god_mode, 2, k_god_mode_hooks, 0 },
     { "keypad_any_code", false, k_keypad_any_code, 3, k_keypad_any_code_hooks, 0 },
@@ -220,6 +235,6 @@ static const FeatureDef k_features[] = {
     { "perf_streaming_aggressive", false, k_perf_streaming_aggressive, 3, k_perf_streaming_aggressive_hooks, 0 },
     { "signal_boundary_limit", false, k_signal_boundary_limit, 2, k_signal_boundary_limit_hooks, 0 },
     { "tool_range_1000", false, k_tool_range_1000, 0, k_tool_range_1000_hooks, 8 },
-    { "unlimited_thrusters", true, k_unlimited_thrusters, 1, k_unlimited_thrusters_hooks, 0 },
+    { "unlimited_thrusters", true, k_unlimited_thrusters, 2, k_unlimited_thrusters_hooks, 0 },
     { "web_receivers_disabled", true, k_web_receivers_disabled, 1, k_web_receivers_disabled_hooks, 0 },
 };

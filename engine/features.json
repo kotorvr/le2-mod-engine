@@ -1,7 +1,7 @@
 {
   "boost_brake_movement": {
     "live": false,
-    "patches": 7,
+    "patches": 11,
     "call_hooks": 0,
     "experimental": false
   },
@@ -67,7 +67,7 @@
   },
   "unlimited_thrusters": {
     "live": true,
-    "patches": 1,
+    "patches": 2,
     "call_hooks": 0,
     "experimental": false
   },

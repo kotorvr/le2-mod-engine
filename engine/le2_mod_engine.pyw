@@ -295,6 +295,22 @@ class ModEngine(tk.Tk):
                             "OpenXR. Connect from the headset first, then start the game. On the very first OpenXR "
                             "run the view can look narrow: restart once and it's correct.",
                   style="Small.TLabel", wraplength=440).grid(sticky="w", pady=(8, 0))
+        ttk.Separator(tab).grid(sticky="ew", pady=10)
+        ttk.Label(tab, text="Oculus mode (Air Link / Link):").grid(sticky="w")
+        self.vars["quest_haptics"] = tk.BooleanVar(value=True)
+        ttk.Checkbutton(tab, text="Controller vibration on Quest", variable=self.vars["quest_haptics"],
+                        command=self._write_ini).grid(sticky="w", pady=(4, 0))
+        row = ttk.Frame(tab)
+        row.grid(sticky="w", padx=(24, 0), pady=(2, 0))
+        ttk.Label(row, text="Strength").grid(row=0, column=0)
+        self.haptic_strength = tk.StringVar(value="1.5")
+        box = ttk.Combobox(row, textvariable=self.haptic_strength, state="readonly", width=6,
+                           values=["0.5", "1.0", "1.5", "2.0", "3.0", "5.0"])
+        box.grid(row=0, column=1, padx=(8, 0))
+        box.bind("<<ComboboxSelected>>", lambda _event: self._write_ini())
+        self.vars["keep_running_in_dash"] = tk.BooleanVar(value=True)
+        ttk.Checkbutton(tab, text="Keep the game running behind the Oculus Dash",
+                        variable=self.vars["keep_running_in_dash"], command=self._write_ini).grid(sticky="w", pady=(4, 0))
         return tab
 
     def _set_vr_mode(self):
@@ -413,6 +429,9 @@ class ModEngine(tk.Tk):
             self.vr_mode.set("vdxr" if cfg.getboolean("vr", "vdxr", fallback=False) else "openxr")
         else:
             self.vr_mode.set("oculus")
+        self.vars["quest_haptics"].set(cfg.getboolean("vr", "quest_haptics", fallback=True))
+        self.vars["keep_running_in_dash"].set(cfg.getboolean("vr", "keep_running_in_dash", fallback=True))
+        self.haptic_strength.set(cfg.get("vr", "haptic_strength", fallback="1.5"))
         self._ini_debug = dict(cfg["debug"]) if cfg.has_section("debug") else {}
 
     def _write_ini(self):
@@ -426,7 +445,10 @@ class ModEngine(tk.Tk):
         for key, _, _ in STREAMING[1:]:  # at most one: both rewrite the same instructions
             cfg["mods"][key] = "1" if self.streaming.get() == key else "0"
         cfg["mods"]["openxr_runtime"] = "1" if self.vr_mode.get() != "oculus" else "0"
-        cfg["vr"] = {"vdxr": "1" if self.vr_mode.get() == "vdxr" else "0"}
+        cfg["vr"] = {"vdxr": "1" if self.vr_mode.get() == "vdxr" else "0",
+                     "quest_haptics": "1" if self.vars["quest_haptics"].get() else "0",
+                     "haptic_strength": self.haptic_strength.get(),
+                     "keep_running_in_dash": "1" if self.vars["keep_running_in_dash"].get() else "0"}
         cfg["perf"] = {"no_power_throttling": "1" if self.vars["no_power_throttling"].get() else "0"}
         if getattr(self, "_ini_debug", None):
             cfg["debug"] = self._ini_debug  # kept as the user set it

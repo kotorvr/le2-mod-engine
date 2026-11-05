@@ -173,6 +173,25 @@ static bool IniFlag(const char* section, const char* key, int fallback)
     return fallback != 0;
 }
 
+// "key = 1.5" from the cached ini text, or the fallback.
+static float IniFloat(const char* section, const char* key, float fallback)
+{
+    std::string marker = std::string("[") + section + "]";
+    size_t at = g_iniText.find(marker);
+    if (at == std::string::npos)
+        return fallback;
+    size_t end = g_iniText.find("\n[", at);
+    std::string body = g_iniText.substr(at, end == std::string::npos ? std::string::npos : end - at);
+    size_t k = body.find(std::string("\n") + key);
+    if (k == std::string::npos)
+        return fallback;
+    size_t eq = body.find('=', k);
+    size_t eol = body.find('\n', k + 1);
+    if (eq == std::string::npos || (eol != std::string::npos && eq > eol))
+        return fallback;
+    return (float)atof(body.c_str() + eq + 1);
+}
+
 static bool IniChanged()
 {
     WIN32_FILE_ATTRIBUTE_DATA a;
@@ -371,6 +390,105 @@ static int InstallCallHooks(int f)
 typedef FARPROC(WINAPI* GetProcAddressFn)(HMODULE, LPCSTR);
 static GetProcAddressFn g_realGetProcAddress = nullptr;
 
+// ---------------------------------------------------------------- Oculus runtime wrappers
+// The game resolves every Oculus function through the GetProcAddress import we already hook, so it can be handed a
+// wrapper instead. Only used on the Oculus runtime (Air Link / Link), never in OpenXR mode.
+namespace Ovr
+{
+    struct HapticsBuffer
+    {
+        const void* samples;
+        int count;
+        int submitMode;
+    };
+    typedef int (*SubmitVibrationFn)(void*, int, const HapticsBuffer*);
+    typedef int (*SetVibrationFn)(void*, int, float, float);
+    typedef int (*GetSessionStatusFn)(void*, uint8_t*);
+
+    static bool g_questHaptics = false;
+    static bool g_keepRunningInDash = false;
+    static float g_hapticStrength = 1.5f;
+    static SetVibrationFn g_setVibration = nullptr;
+    static GetSessionStatusFn g_getSessionStatus = nullptr;
+
+    // Quest controllers ignore buffered haptics over Link, and the game only ever uses the buffered call. So each
+    // frame's buffer is averaged into one amplitude and sent with ovr_SetControllerVibration. That call is only made
+    // when the level changes, plus a keep-alive before the runtime's own time-out.
+    static int SubmitVibration(void* session, int type, const HapticsBuffer* buffer)
+    {
+        static float s_last[2] = { 0.0f, 0.0f };
+        static ULONGLONG s_sent[2] = { 0, 0 };
+        static bool s_logged[2] = { false, false };
+        if (g_setVibration == nullptr || (type != 1 && type != 2))
+            return 0;
+        float amplitude = 0.0f;
+        if (buffer != nullptr && buffer->samples != nullptr && buffer->count > 0)
+        {
+            const uint8_t* samples = (const uint8_t*)buffer->samples;
+            unsigned total = 0;
+            for (int i = 0; i < buffer->count; ++i)
+                total += samples[i];
+            amplitude = (float)total / (float)buffer->count / 255.0f * g_hapticStrength;
+            amplitude = amplitude > 1.0f ? 1.0f : amplitude < 0.01f ? 0.0f : amplitude;
+        }
+        int hand = type - 1;
+        ULONGLONG now = GetTickCount64();
+        float change = amplitude - s_last[hand];
+        bool keepAlive = amplitude > 0.0f && now - s_sent[hand] > 500;
+        if (change > -0.02f && change < 0.02f && !keepAlive && !(amplitude == 0.0f && s_last[hand] != 0.0f))
+            return 0;
+        int result = g_setVibration(session, type, amplitude > 0.0f ? 1.0f : 0.0f, amplitude);
+        s_last[hand] = amplitude;
+        s_sent[hand] = now;
+        if (amplitude > 0.0f && !s_logged[hand])
+        {
+            s_logged[hand] = true;
+            Log("haptics: first %s hand vibration, amplitude %.2f, result %d", hand ? "right" : "left", amplitude, result);
+        }
+        return 0;
+    }
+
+    // ovrSessionStatus bytes: 0 IsVisible, 1 HmdPresent, 2 HmdMounted, 3 DisplayLost, 4 ShouldQuit, 5 ShouldRecenter,
+    // 6 HasInputFocus, 7 OverlayPresent, 8 DepthRequested.
+    static int GetSessionStatus(void* session, uint8_t* status)
+    {
+        static uint8_t s_previous[9] = { 0xff };
+        int result = g_getSessionStatus(session, status);
+        if (result < 0 || status == nullptr)
+            return result;
+        if (memcmp(s_previous, status, sizeof(s_previous)) != 0)
+        {
+            memcpy(s_previous, status, sizeof(s_previous));
+            Log("oculus status: visible %d mounted %d focus %d overlay %d quit %d", status[0], status[2], status[6],
+                status[7], status[4]);
+        }
+        status[6] = 1;  // HasInputFocus: the Dash doesn't take the game's focus away
+        status[7] = 0;  // OverlayPresent: no overlay as far as the game can tell
+        return result;
+    }
+
+    static FARPROC Wrap(HMODULE module, LPCSTR name, FARPROC real)
+    {
+        if (g_questHaptics && strcmp(name, "ovr_SubmitControllerVibration") == 0)
+        {
+            g_setVibration = (SetVibrationFn)g_realGetProcAddress(module, "ovr_SetControllerVibration");
+            if (g_setVibration != nullptr)
+            {
+                Log("haptics: buffered vibration redirected to ovr_SetControllerVibration (strength %.2f)",
+                    g_hapticStrength);
+                return (FARPROC)&SubmitVibration;
+            }
+        }
+        if (g_keepRunningInDash && strcmp(name, "ovr_GetSessionStatus") == 0)
+        {
+            g_getSessionStatus = (GetSessionStatusFn)real;
+            Log("dash: game keeps running behind the Oculus Dash");
+            return (FARPROC)&GetSessionStatus;
+        }
+        return real;
+    }
+}
+
 static void OnScriptLoaded(HMODULE module)
 {
     char path[MAX_PATH];
@@ -404,8 +522,12 @@ static void OnScriptLoaded(HMODULE module)
 static FARPROC WINAPI HookGetProcAddress(HMODULE module, LPCSTR name)
 {
     FARPROC result = g_realGetProcAddress(module, name);
-    if (result != nullptr && ((ULONG_PTR)name >> 16) != 0 && strcmp(name, "setup_bindings") == 0)
+    if (result == nullptr || ((ULONG_PTR)name >> 16) == 0)
+        return result;
+    if (strcmp(name, "setup_bindings") == 0)
         OnScriptLoaded(module);
+    else if (name[0] == 'o' && name[1] == 'v' && name[2] == 'r' && name[3] == '_')
+        return Ovr::Wrap(module, name, result);
     return result;
 }
 
@@ -630,7 +752,9 @@ static void SetUpOpenXr()
     }
     else
         Log("openxr: using the system OpenXR runtime");
-    if (IniFlag("debug", "openxr_log", 0))
+    if (IniFlag("debug", "openxr_trace", 0))
+        SetEnvironmentVariableW(L"LIBOVR_OPENXR_LOG", L"buffered");  // per-frame trace, written at a clean quit
+    else if (IniFlag("debug", "openxr_log", 0))
         SetEnvironmentVariableW(L"LIBOVR_OPENXR_LOG", L"stencil");  // startup/shutdown markers, no per-call cost
 }
 
@@ -650,6 +774,13 @@ static void Start()
     ReadConfig();
     Log("config %ls: %zu bytes", g_ini, g_iniText.size());
     SetUpOpenXr();
+    bool openXr = false;
+    for (int f = 0; f < kFeatureCount; ++f)
+        openXr = openXr || (strcmp(k_features[f].id, "openxr_runtime") == 0 && g_want[f]);
+    Ovr::g_questHaptics = !openXr && IniFlag("vr", "quest_haptics", 1);
+    Ovr::g_keepRunningInDash = !openXr && IniFlag("vr", "keep_running_in_dash", 1);
+    float strength = IniFloat("vr", "haptic_strength", 1.5f);
+    Ovr::g_hapticStrength = strength < 0.1f ? 0.1f : strength > 5.0f ? 5.0f : strength;
     for (int f = 0; f < kFeatureCount; ++f)
     {
         if (!g_want[f])

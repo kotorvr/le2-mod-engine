@@ -1,7 +1,22 @@
 {
   "feature": "boost_brake_movement",
   "live": false,
-  "patches": [],
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0x770121",
+      "expect": "41 0f 2f d3 76 1e 0f 57 c0 f3",
+      "replace": "f3 0f 59 35 13 ca d6 00 eb 1a",
+      "why": "Push-off release 0x14076fc60: the bonus block (cap + min(|x|*0.5, B), B=0x1414dcf70=0.0, so always +0) is replaced by mulss xmm6,[4.0] then a jump past it. Relative velocity cap is pushmaxspeed x4."
+    },
+    {
+      "module": "exe",
+      "rva": "0x762516",
+      "expect": "0f 2f 15 d3 50 d8 00 76 1e 0f",
+      "replace": "f3 0f 59 1d 1e a6 d7 00 eb 1d",
+      "why": "Same dead bonus block in the physics speed limiter 0x140761aa0: cap xmm3 becomes pushmaxspeed x4."
+    }
+  ],
   "values": [
     {
       "module": "exe",
@@ -42,17 +57,31 @@
       "module": "exe",
       "rva": "0x14dd008",
       "expect": "66 66 e6 3e",
-      "replace": "cd cc 2c 3f",
-      "why": "hand thruster scale, one hand (0x1406fa904, times script multiplier 0x141e56448) x1.5: shipping constant 0.45 -> 0.675. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74b0 at engine init. Read-only section: needs VirtualProtect."
+      "replace": "cd cc ac 3f",
+      "why": "Thruster TOP SPEED, one hand: 0.45 stock, 0.675 now, 1.35 proposed."
     },
     {
       "module": "exe",
       "rva": "0x14dd00c",
       "expect": "cd cc 0c 3f",
-      "replace": "33 33 53 3f",
-      "why": "hand thruster scale, two hands (0x1406fa8f2, times script multiplier 0x141e56450) x1.5: shipping constant 0.55 -> 0.825. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74b4 at engine init. Read-only section: needs VirtualProtect."
+      "replace": "33 33 d3 3f",
+      "why": "Thruster TOP SPEED, two hands: 0.55 stock, 0.825 now, 1.65 proposed."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dd518",
+      "expect": "00 00 00 40",
+      "replace": "00 00 00 41",
+      "why": "Speed-gain limit in 0x140761aa0: speed may rise above the cap by only 2.0/s (x dt). 2.0 -> 8.0."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dd010",
+      "expect": "00 00 80 3f",
+      "replace": "00 00 00 40",
+      "why": "Hand thruster acceleration (filler -> 0x141ef74b8, mover +0xa6c). 1.0 -> 2.0."
     }
   ],
-  "evidence": "Boost logic is 0x1406f9370 (PlayerNav per-frame, called from 0x14076f59a): a burst may start while timer [entry+0xaa0] < duration (0x141ef74a8); on start it sets [9f0]=CD.boostmaxspeed (+0xbc, reflection 0x1406d21c0), [9f4]=accel (0x141ef74a0), fires delegate_BoostOn + event_sound_player_boost; each frame [aa0]+=dt; when not boosting [aa4]+=dt and once [aa4] > cooldown (0x141ef74bc) [aa0] resets to 0 (ready), otherwise it is pinned at duration+eps; failure fires delegate_BoostFailed. Brake (0x1406f9e70 path, mode constant 0x1414dd048=2) sets [a94]=max(0x141ef74c4, 0x141ef74c8*speed), x0.2 (0x1414dd040) when the power check fails. Hand thrusters (0x1406fa4d0) scale the thrust direction by 0x141ef74b0 (one hand) / 0x141ef74b4 (two hands) times save/script multipliers at 0x141e56448..5c (written by 0x1407492a0 from save/upgrade data - deliberately NOT patched). All runtime globals are BSS filled once by 0x14072dd50 (called from engine init 0x14012bd40) from .rdata constants that nothing else reads (full-.text rip-relative scan). NOT verified: exact units; top boost speed stays capped by level data unless the optional patch is used; dinput8 delay-load timing vs the filler (hence both .rdata and .data entries). Only the .rdata source constants are patched: the loader writes them in DllMain, before the engine's tuning filler (0x14072dd50) copies them into the runtime globals at 0x141ef74a0..74c8.",
-  "risk": "Value-only changes, no code. Player-only tuning (no other readers). Not saved. The .data writes are aligned float stores (live-safe), but the GUI treats this switch as next-launch. x2 brake may feel abrupt; x1.5 hand thrusters. The optional uncapped boost can reach very high speeds -> impact deaths without god mode."
+  "evidence": "Boost logic is 0x1406f9370 (PlayerNav per-frame, called from 0x14076f59a): a burst may start while timer [entry+0xaa0] < duration (0x141ef74a8); on start it sets [9f0]=CD.boostmaxspeed (+0xbc, reflection 0x1406d21c0), [9f4]=accel (0x141ef74a0), fires delegate_BoostOn + event_sound_player_boost; each frame [aa0]+=dt; when not boosting [aa4]+=dt and once [aa4] > cooldown (0x141ef74bc) [aa0] resets to 0 (ready), otherwise it is pinned at duration+eps; failure fires delegate_BoostFailed. Brake (0x1406f9e70 path, mode constant 0x1414dd048=2) sets [a94]=max(0x141ef74c4, 0x141ef74c8*speed), x0.2 (0x1414dd040) when the power check fails. Hand thrusters (0x1406fa4d0) scale the thrust direction by 0x141ef74b0 (one hand) / 0x141ef74b4 (two hands) times save/script multipliers at 0x141e56448..5c (written by 0x1407492a0 from save/upgrade data - deliberately NOT patched). All runtime globals are BSS filled once by 0x14072dd50 (called from engine init 0x14012bd40) from .rdata constants that nothing else reads (full-.text rip-relative scan). NOT verified: exact units; top boost speed stays capped by level data unless the optional patch is used; dinput8 delay-load timing vs the filler (hence both .rdata and .data entries). Only the .rdata source constants are patched: the loader writes them in DllMain, before the engine's tuning filler (0x14072dd50) copies them into the runtime globals at 0x141ef74a0..74c8. Wrist thrusters and push-off: Thrusters: 0x1406fa4d0 does not apply force. It fills a seek mover at entry+0xa50 (+0xa68 max speed = length of the thrust vector, +0xa6c accel) and calls 0x14111cc30, so 0x141ef74b0/b4 (sources 0x1414dd008/0c) are top speeds and 0x141ef74b8 (source 0x1414dd010) is acceleration. Timers +0xaa8/+0xaac limit at 100000 s, so no real time limit; thrust halves (0x1414dd030) only if power <= cost. Same mover type: boost +0x9d8, brake +0xa78, stick flight +0xa00/+0xa28 (fixed cap 4, accel 3 at 0x141e56478). Push-off: nav CD pushmaxspeed +0xb8 (reflection 0x1406d2479) copied to entry+0xdb8 at 0x14072547c; read only at 0x140770103 (0x14076fc60: clamps velocity relative to the grabbed surface, writes +0x710 at 0x140770242, zeroes below 0.225) and 0x1407624e2 (0x140761aa0: after physics, xmm6-8 old velocity, xmm15 dt [rax+0x3c]). 4.0 at 0x1414dcb3c is a .rdata constant no patch touches; 0x1414dcf70 readers are only those two sites.",
+  "risk": "Value-only changes, no code. Player-only tuning (no other readers). Not saved. The .data writes are aligned float stores (live-safe), but the GUI treats this switch as next-launch. x2 brake may feel abrupt; x1.5 hand thrusters. The optional uncapped boost can reach very high speeds -> impact deaths without god mode. Launch-only; patches rewrite per-frame code. pushmaxspeed's real value is in game packages and unknown, so resulting speed is unmeasured. The cap also limits bad hand-tracking jumps, so a tracking glitch can now launch Jack up to 4x faster and may tunnel thin colliders; continuous collision was not verified. Impact deaths need god mode. 0x1414dd518 has a second reader 0x1407621a1 (see report). Not saved."
 }

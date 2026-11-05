@@ -16,8 +16,8 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 | Cure Gun: permanent neutralization | ready | Cured creep never comes back, and cured cysts stay deflated. |
 | All gadgets | ready | Gives Jack the MageHand, Faraday Projector and Cure Gun as soon as he's in a level, with the same engine call the story uses. **Your save keeps them**: unticking the switch doesn't take them away. |
 | Maximum upgrades | ready | Cutter, faraday projector and magehand work at their top upgrade level (2). Read-side only: nothing is written to your save. Radiation shield / unsticky creep not covered yet. |
-| Boost, brake, movement | ready | Boost ×2 (acceleration and burst), brake ×2, hand thrusters ×1.5, boost cooldown 2 s → 0.05 s. |
-| Unlimited thrusters | ready | Boost, brake and thrusters never drain suit power. Live. |
+| Boost, brake, movement | ready | Boost ×2 (acceleration and burst), brake ×2, wrist thruster top speed ×3 and acceleration ×2, push-off speed cap ×4, boost cooldown 2 s → 0.05 s. |
+| Unlimited thrusters | ready | The wrist thruster battery stays full, and boost and brake never drain suit power. Live. |
 | Signal and boundary limit | ready | No "signal low/lost" warning, no out-of-bounds death. |
 | Web receivers stay disabled | ready | A web receiver you disable doesn't switch itself back on after 5 s. Live. |
 | Tool range 1000 | experimental | Magehand, cutter and faraday projector reach set to 1000 when their tool data loads. IO scanner and cure gun not covered yet. |
@@ -37,6 +37,8 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
   Medium on GPUs under 8000 MB, to Low under 6000 MB, and lowers the preset on PCs under 16 GB RAM
   (`0x140d8af60`). The loader removes those caps.
 - **No Windows power throttling** (EcoQoS) for the game process on Windows 11.
+- **Quest controller vibration over Link/Air Link.** Quest ignores the game's buffered haptics, so the loader converts them to `ovr_SetControllerVibration`, with a strength setting in the VR tab.
+- **Keeps running behind the Oculus Dash** instead of pausing.
 - **NVIDIA profile, optional.** One button sets *Power management: Prefer maximum performance* on the driver's own
   "Lone Echo II" profile through NVAPI; another removes it again. Nothing replaces the driver database.
 
