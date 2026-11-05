@@ -1,0 +1,18 @@
+{
+  "feature": "all_gadgets",
+  "live": false,
+  "patches": [],
+  "values": [],
+  "runtime_calls": {
+    "approach": "Same mechanism as max_upgrades.json: call r16_player_upgrade's tool-granting functions through the script external-call dispatcher (setup_bindings slot +0xb8). See max_upgrades.json for script hash, dispatcher rva and signature.",
+    "script": "b895d8092e5f8d55.dll",
+    "functions_in_order": [
+      {"name": "upg_magehand_initial", "hash": "0x033250f677509296"},
+      {"name": "upg_faraday_initial", "hash": "0xbd0aa343eebed86e"},
+      {"name": "upg_curegun_unlock", "hash": "0x2024326e4fb04fd5"}
+    ],
+    "also_available_in_same_dispatcher": ["upgrade_faraday 0xe12e230007bd087b", "_upgrade_faraday 0xb36cdd0ae736e0a5", "MNR16GiveCureGunNode_* / MNR16SetCureGunAvailableNode_* (mission entry points, hashes in the dispatcher table at rva 0xa99b..0xbf71)"]
+  },
+  "evidence": "Tools are engine components on Jack (R16CutterTool, R16IOScanner, R16FaradayProjector, R16CureGunTool, magehand) driven by CR16ToolAbilityManagerCS; plr_tool_selector (37a286d1ddfde95c.dll) builds the wheel from ComponentEnabledExpression on those components ('count_enabled_tools', 'tool_enabled'). The story grants the later gadgets through r16_player_upgrade's upg_magehand_initial / upg_faraday_initial / upg_curegun_unlock (that script also owns MNR16GiveCureGunNode and MNR16SetCureGunAvailableNode, and the string 'curegun_unlocked'). Cutter and IO scanner appear to be available from the start of the story, so they are not in this list. NOT verified: that the *_initial functions enable the tool components (inferred from names + the script's EnableComponentNode/R16SetPlayerToolUpgradeLevelNode usage); the LE1 approach (clearing 13 ability-lock bytes in Jack's nav record) has no confirmed LE2 analogue yet (CR16NavAbilityManagerCS exists; not reversed).",
+  "risk": "Writes story progression state that gets saved. Giving the cure gun or faraday early may skip tutorial dialogue/mission waits (MNR16WaitForUpgradeNode, MNR16WaitForPlayerToolNode) or let missions advance out of order. Must run on the game thread after the player and r16_player_upgrade script instance exist."
+}

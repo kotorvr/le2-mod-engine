@@ -1,0 +1,23 @@
+{
+  "feature": "god_mode",
+  "live": true,
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0x72fdac",
+      "expect": "0f 82 42 01 00 00",
+      "replace": "90 e9 42 01 00 00",
+      "why": "PlayerKill(navCS, idx, cause, part, ...) @0x14072fd70: its first early-exit (bt [entry+4],10 'already dead' -> jb epilogue) becomes an unconditional jmp to the epilogue 0x14072fef4, so Kill never runs for any cause. Only bytes 0-1 change (0f 82 -> 90 e9; the e9 rel32 ends at the same address so the target is unchanged). Both bytes sit in the aligned qword 0x14072fda8..af: apply/revert with one 8-byte interlocked write while the game runs."
+    },
+    {
+      "module": "exe",
+      "rva": "0x7f0010",
+      "expect": "48 8b 81 c0 00 00 00 48",
+      "replace": "b8 01 00 00 00 c3 00 48",
+      "why": "IsPlayerInvulnerable(radiationCS, idx) @0x1407f0010 (returns reason-mask [entry+0x3c] > 0) -> 'mov eax,1; ret'. Only callers: the R16PlayerInvulnerableExpression script expression (0x140b4ee00) and CR16PlayerExpression (0x140d2a786), so scripts that gate hazards on 'player invulnerable' (e.g. sys_crush_death TryCrushPlayer) skip them. 16-byte aligned function start: one aligned 8-byte write (bytes 6-7 unchanged)."
+    }
+  ],
+  "values": [],
+  "evidence": "Every player death goes through 0x14072fd70 (CR16PlayerNavCS, 0x1220-byte entries; logs 'You have died from %s to the %s.' then fires delegate_Killed). Direct callers: 0x140706ac0 (deferral wrapper, tail-jmp), 0x1409e65f2 (CR16DamageableCS damage handler 0x1409e5930 when health [r13+0x14] reaches 0, after firing delegate_OnDeath), 0x140d1d34a (script kill node). The deferred path (CDeferredMethodQueue) re-enters the same function. Kill already returns early when entry flag bit 10 (dead) or bit 9 (the game's own MN invulnerable bit, toggled at 0x140b3c9e0) is set. Damage-type enum symbols at 0x1414db9f0.. (creep, spore, radiation, cyst, velocity, crushed, laser, boundaries, suicide, fury_thruster, scripting, electricity, emp, bullets, explosion, cure, reprint, web, unspecified) all feed damageable -> Kill. glb_global_player_*_death scripts are FX/sequence reactions to Killed (only VFX/camera fields). Invulnerable mask: R16SetPlayerInvulnerableNode (0x140b884e0) -> 0x1408162f0 sets/clears bit N of [entry+0x3c] in the player's R16Radiation component; getter 0x1407f0010. NOT verified in game: whether health sitting at 0 (damage still subtracts at 0x1409e6468 and sets [r13+0x18]=1) causes HUD/vignette or input side effects; whether any scripted sequence fades/reloads a checkpoint without calling Kill (out-of-bounds is the boundary fork's area).",
+  "risk": "Patch 1 blocks Kill for the PlayerNav CS only (single entry: Jack). Generic damageable code is NOT touched, so creep/drones/cysts still take damage and die (cure gun unaffected). Health can still reach 0 and stay there while god mode is on; turning god mode off does not restore health by itself (a checkpoint load does). Patch 2 makes every script asking 'is Jack invulnerable' get yes; nothing found that waits on it. No save writes."
+}

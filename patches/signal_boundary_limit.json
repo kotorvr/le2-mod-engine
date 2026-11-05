@@ -1,0 +1,23 @@
+{
+  "feature": "signal_boundary_limit",
+  "live": false,
+  "patches": [
+    {
+      "module": "63082fce01797fb2.dll",
+      "rva": "0x1c746",
+      "expect": "0f 97 c0",
+      "replace": "30 c0 90",
+      "why": "sys_out_of_bounds_manager, branch node 0x18001c4d0: returns distance^2(player, out_of_bounds_origin) > out_of_bounds_radius^2. seta al -> xor al,al: the player is never 'outside the boundary'."
+    },
+    {
+      "module": "63082fce01797fb2.dll",
+      "rva": "0x1e588",
+      "expect": "0f 2f c7 77 0f",
+      "replace": "eb 12 90 90 90",
+      "why": "same script, ComputeSignalStrengthFromDistance (0x18001e210): clamp(remap(distance, radius-warning_buffer..radius)) into [0,1]. Skip the clamp so the result stays at the preloaded 1.0 (xmm7, callee-saved): signal is always full, so no SIGNAL LOW / SIGNAL LOST, no warning, no kill. Still returns 0 while showing_death (unchanged)."
+    }
+  ],
+  "values": [],
+  "evidence": "Script 63082fce01797fb2.dll = sys_out_of_bounds_manager (echo-symbols name). Instance vars at [[this]+0x68]: name table at .data 0x2c000 in type groups; initializer 0x18001ab20 gives out_of_bounds_warning_buffer +0x74 =20, signal_strength +0x8c, signal_loss_threshold_percent +0x98 =0.1, out_of_bounds_radius +0xa0 =10 (set per point by SetOutOfBoundsPoint 0x18000c310 from sys_out_of_bounds_point), showing_death bool +0xc2. +0xa0 is read only by these two functions. signal_strength (+0x8c) is written from ComputeSignalStrengthFromDistance (0x18000de30) or spoofed value (0x1800125f0). The kill is done inside the manager's node graph (damage node, 'damagetype'/'limb' params at 0x1800038c6), gated on those values; evt_out_of_bounds_kill/play_space events exist only in glb_global_player_out_of_bounds_death (d8687fc7900a0df4.dll) and in neither the exe nor other scripts. NOT verified in game.",
+  "risk": "Script patch: apply at load (setup_bindings) - not live. Scripted 'spoofed' signal messages (MNR16SetSpoofedOutOfBoundsMessageNode, story HUD beats) still run because they write spoofed_signal_strength separately. Level kill volumes (R16EnableKillVolumeNode) and the physical VR play-space boundary (evt_player_left_play_space) are separate and untouched. Flying far out may hit streaming/void areas with no geometry."
+}

@@ -1,0 +1,8 @@
+{
+  "feature": "tool_range_1000",
+  "live": false,
+  "patches": [],
+  "values": [],
+  "evidence": "Range-like field names in the exe and their reflection descriptors (fieldref.py): beamrange/maxbeamrange (descriptor fn 0x140ba04d0: hitposws +0x0, convergence +0xc, beamrange +0x10, maxbeamrange +0x14), projectionrange (+0x28 in fn 0x140ba1410), scandistance (+0x50 in fn 0x140ba25e0), sensorrange, aimrange, cutterranges (array, fn 0x140967350), rayranges/raydisttable. The 0x140ba04d0-family descriptors repeat ~6 times (one per serializer format) and describe expression OUTPUT structs (e.g. magehand beam state reported to scripts), not the tools' tuning data, so editing them would change what scripts see, not the real reach. The real ranges live in per-tool component data (SR16MageHandCD, SR16CutterToolCD, SR16IOScannerCD, SR16FaradayProjectorCD), loaded from _data packages; their binary layout was not recovered. Not found: the CS code sites that compare hand-to-target distance against the CD range (would be the right patch points). Next step: find CR16MageHandCS / CR16CutterToolCS update functions (factory-created, no RTTI COLs in this exe, so locate via their error strings e.g. 'CR16IsAimingCutterAtActorExpression couldn't find CR16CutterToolCS', 'CR16CureGunToolCS: Could not find %s ...') and look for comiss/ucomiss of a distance against a CD-relative float; or patch at runtime by finding the CD resource for each tool after load and writing 1000.0f into its range fields.",
+  "risk": "n/a (no patch). A range of 1000 m on magehand/cutter could also let the cutter hit far-away story geometry or let magehand pull objects across levels; expect physics oddities."
+}

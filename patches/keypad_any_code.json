@@ -1,0 +1,31 @@
+{
+  "feature": "keypad_any_code",
+  "live": false,
+  "module_sha256": {"1b9174546ee05f8a.dll": "08596d4d89daf836f21eb4fba7698b47dfead92684f3d295a9835f068bb034cb"},
+  "patches": [
+    {
+      "module": "1b9174546ee05f8a.dll",
+      "rva": "0x17cc3",
+      "expect": "0f b6 88 b2 00 00 00",
+      "replace": "b9 01 00 00 00 90 90",
+      "why": "External GetVariable(FLAG correct_code) in prp_door_future_keypad: movzx ecx,[inst+0xb2] -> mov ecx,1. The door/consumer scripts (ce88d9fe9bdf02d4, cfadc41efdf8e856, ee79d2b57e157978: 'access_granted', 'keypad_sequence_complete', 'numpad_success') read correct_code through this getter via ExternalScriptFlagExpression."
+    },
+    {
+      "module": "1b9174546ee05f8a.dll",
+      "rva": "0xe136",
+      "expect": "80 b9 b2 00 00 00 00 48 0f 45 c2",
+      "replace": "48 89 d0 90 90 90 90 90 90 90 90",
+      "why": "Branch node 0x9f11491f (exec 0x18000e0f0): 'if correct_code -> exec_true else exec_false'. cmp [rcx+0xb2],0 / cmovne rax,rdx -> mov rax,rdx (rdx already = exec_true pin 0x56ccd1bd99a59d3b), so the keypad's own success path always runs."
+    },
+    {
+      "module": "1b9174546ee05f8a.dll",
+      "rva": "0xc071",
+      "expect": "0f b6 81 b2 00 00 00",
+      "replace": "b8 01 00 00 00 90 90",
+      "why": "Bool-expression node 0x18000c030 that feeds correct_code into the graph (refs at 0x18001abf3/0x18001d0ff): movzx eax,[rcx+0xb2] -> mov eax,1. Keeps the internal graph consistent with the two patches above."
+    }
+  ],
+  "values": [],
+  "evidence": "Script 1b9174546ee05f8a.dll = prp_door_future_keypad (echo-symbols). Variable names resolved from the CSymbol64 hashes in its set-by-name function 0x180004b78 against echo-symbols names.tsv: correct_code = 0xff6b4275497911a9 -> bool at instance+0xb2 (Disabled +0xb5, UPDATING +0xb4). Every read of +0xb2 in the DLL: external getter 0x180017cc3, branch node 0x18000e136 (pins exec_true 0x56ccd1bd99a59d3b / exec_false 0x54dc9983c968aa39 resolved by name), bool node 0x18000c071. Only writers are the external SetVariable entry points 0x180018731 / 0x18001923f, i.e. correct_code is assigned from outside (engine/other script) and consumed by the 3 consumer scripts above, which also carry 'evt_internal_keypad_completion'. Node graph: branch 0x9f11491f is reached via a DelayNode (exec 0x180013160) at the end of a chain that starts from a condition node 0x18000ead0. NOT verified: whether the internal branch is evaluated before any digit is entered (in which case the door may open on the first check / first key press rather than after 4 digits) — the patch would then be 'keypad always unlocks' rather than strictly 'any 4 digits'. Also not verified: the 4-character combo comparison itself was not located (it is not in this DLL as code; it appears to happen in engine-side expression evaluation that then sets correct_code externally).",
+  "risk": "Applies to every keypad that uses prp_door_future_keypad (all 'future' keypad doors), including story keypads; at worst a keypad opens before the full code is typed. No save writes from these patches themselves, but story flags downstream of 'access_granted' may be set earlier than intended. Module hash pinned above; loader must skip on mismatch."
+}

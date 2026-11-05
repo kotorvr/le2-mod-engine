@@ -1,0 +1,16 @@
+{
+  "feature": "web_receivers_disabled",
+  "live": true,
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0xa7d979",
+      "expect": "72 15",
+      "replace": "eb 15",
+      "why": "CR16CreepWebCS update (0x140a7d3f0): each web sensor/receiver (stride 0x158, flags word +0x140, timer +0x150) that has the temporary-disable flag 0x8 accumulates time; at 5.0s it calls SetSensorFlags(cs,web,sensor,clear=1,mask=8) (0x1409f6800) which re-enables it and fires delegate_SensorStateChanged. jb->jmp skips that call, so a disabled receiver stays disabled."
+    }
+  ],
+  "values": [],
+  "evidence": "CS registered as symbol R16CreepWeb + update 0x140a7d3f0 + 'CR16CreepWebCS' (0x140901fe9..202b). Sensors with flag word 0 are scanned for targets (0x140a7d594); any non-zero flag = inactive. Only 3 callers of SetSensorFlags 0x1409f6800: the 5s timer here, a by-position wrapper 0x1409f66c0, and script node 0x140ce14d0 (R16CreepWebEnableSensorNode family; mask/state come from scripts, e.g. plr_tool_faraday / creep_web scripts). Event names resolved via echo-symbols: delegate_SensorStateChanged (0x141a81ebf), delegate_WebCuredStateChanged, delegate_PowerLost. That bit 0x8 = 'disabled by the player's tool' is inferred from it being the only auto-cleared bit with a 5s timeout; NOT verified in game.",
+  "risk": "Live-safe. Scripts can still re-enable a sensor explicitly through the node (story beats keep working). If some puzzle relies on a receiver coming back on by itself after 5s, it won't. No save writes by the patch."
+}

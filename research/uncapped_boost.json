@@ -1,0 +1,15 @@
+{
+  "feature": "uncapped_boost",
+  "live": false,
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0x6f9a1d",
+      "expect": "0f 82 82 01 00 00",
+      "replace": "90 e9 82 01 00 00",
+      "why": "OPTIONAL 'uncapped boost': skip the boost speed clamp to entry+0x9f0 (= per-level PlayerNav CD 'boostmaxspeed' +0xbc) by turning jb into jmp to the no-clamp path 0x1406f9ba5. Without it the accel/duration changes mostly reach the same data-defined top speed sooner. With cooldown ~0 and no cap, chained boosts accumulate speed: pair with god mode."
+    }
+  ],
+  "evidence": "Optional companion to boost_brake_movement: removes the per-level boostmaxspeed clamp.",
+  "risk": "Very high top speed; untested."
+}

@@ -1,0 +1,28 @@
+{
+  "feature": "max_upgrades",
+  "live": false,
+  "patches": [],
+  "values": [],
+  "runtime_calls": {
+    "approach": "Call r16_player_upgrade's own upgrade functions through the script's external-call dispatcher, the same entry the engine/mission nodes use. No byte patches.",
+    "script": "b895d8092e5f8d55.dll",
+    "script_name": "r16_player_upgrade",
+    "script_sha256": "54332f2b44259f1d157f9b901aa301172c5edf75d4bee0c14506018b2b34dfd6",
+    "dispatcher_rva": "0xa970",
+    "dispatcher_binding_slot": "setup_bindings stores the dispatcher at [bindings + 0xb8] (lea rax,0x18000a970 / mov [rcx+0xb8],rax at rva 0x739d). Same slot in prp_door_future_keypad (rva 0x47bd), so +0xb8 = engine's 'call external script function' callback for every script.",
+    "dispatcher_signature_observed": "rcx = script context (ctx+0x68 = instance vars), rdx = function hash (matched either == full CSymbol64 or (rdx + nodeid32) == full), r8 = int* call counter (incremented), r9 = stored at new thread +0xc8, stack arg5 -> +0xb8/+0xc0, arg6 -> +0xd0, arg9 (byte) = 'allow over concurrency limit' flag. Recommended: wrap slot +0xb8 after setup_bindings returns, capture the args of the first real engine call into this script, and replay them with rdx replaced by the hashes below on the game thread.",
+    "functions_in_order": [
+      {"name": "upg_cutter_upgrade_1", "hash": "0x35090f0d492795c1"},
+      {"name": "upg_cutter_upgrade_2", "hash": "0x35090f0d492795c2"},
+      {"name": "upg_faraday_upgrade_1", "hash": "0x44aa2af0fe325881"},
+      {"name": "upg_faraday_upgrade_2", "hash": "0x44aa2af0fe325882"},
+      {"name": "upg_magehand_1", "hash": "0x8b4228149ad4e231"},
+      {"name": "upg_magehand_2", "hash": "0x8b4228149ad4e232"},
+      {"name": "upg_radiation_shield_1", "hash": "0xfe0a74c2e326a05b"},
+      {"name": "upg_radiation_shield_2", "hash": "0xfe0a74c2e326a058"},
+      {"name": "upg_unsticky_creep", "hash": "0xcdb41b9ff50aa7e0"}
+    ]
+  },
+  "evidence": "r16_player_upgrade (b895d8092e5f8d55.dll) is the only script using R16ToolAbilityUpgradeLevelExpression, R16EnableUpgradedBodyNode and R16SetPlayerToolUpgradeLevelNode (CSymbol64 hashes from echo-symbols scanned across all 5223 scripts). Its external dispatcher 0x18000a970 has one case per upgrade function; each case's 64-bit hash sits immediately before that function's 'Tried to call function <name> externally' string, which is how names were paired with hashes (consecutive _1/_2 hashes differ by 1, consistent). Engine side: CR16PlayerUpgradeCS::UpgradeStageCompleted (0x140773520) returns stage+0x58 of the upgrade's stage array (stride 0x60, count at upgrade+0x78); UpgradeCurrent (0x140772810) sums collected-resource floats. CR16ToolAbilityUpgradeLevelExpression (0x140c970b0) gets the level via the tool-ability CS vtable slot 0x340 (no RTTI COLs in this exe, vtable not resolved). NOT verified: the dispatcher calling convention beyond what the prologue shows, whether calling upg_*_2 without _1 is valid (call in order), and whether the effects persist into saves.",
+  "risk": "These are the story's own upgrade functions, so they write the same player state the game would; that state is SAVED (permanent once the game saves). Calling before Jack/the player-upgrade script exists will do nothing or fault: run on the game thread after the player is spawned. A static alternative (forcing UpgradeStageCompleted to 1: rva 0x773670 'mov edi,[rax+0x58]' 8b 78 58 -> 'inc edi; nop' ff c7 90, edi is 0 there) only fakes completion to scripts and probably does NOT apply effects; not recommended alone."
+}

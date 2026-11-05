@@ -1,0 +1,34 @@
+{
+  "boost_brake_movement": {
+    "live": false,
+    "patches": 7
+  },
+  "cure_gun_permanent": {
+    "live": true,
+    "patches": 2
+  },
+  "god_mode": {
+    "live": true,
+    "patches": 2
+  },
+  "keypad_any_code": {
+    "live": false,
+    "patches": 3
+  },
+  "perf_default_caps": {
+    "live": false,
+    "patches": 2
+  },
+  "signal_boundary_limit": {
+    "live": false,
+    "patches": 2
+  },
+  "unlimited_thrusters": {
+    "live": true,
+    "patches": 1
+  },
+  "web_receivers_disabled": {
+    "live": true,
+    "patches": 1
+  }
+}

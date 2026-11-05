@@ -1,0 +1,22 @@
+{
+  "feature": "perf_default_caps",
+  "live": false,
+  "patches": [
+    {
+      "module": "exe",
+      "rva": "0xd8b09a",
+      "expect": "73 4d",
+      "replace": "eb 4d",
+      "why": "Default-settings generator (0x140d8af60): 'if dedicated VRAM >= 8000 MB skip caps' becomes an unconditional skip, so 6-8 GB cards no longer get texture quality forced to Medium and <6 GB cards to Low."
+    },
+    {
+      "module": "exe",
+      "rva": "0xd8b0fb",
+      "expect": "73 15",
+      "replace": "eb 15",
+      "why": "Same function: 'if system RAM >= 16 GB keep preset' becomes unconditional, so 8-12 GB systems are not dropped to quality preset 1."
+    }
+  ],
+  "evidence": "0x140d8af60 is called only when settings defaults are generated (0x14012b795 when the settings 'needs defaults' flag bit 24 of +0x79d0 is set, then cleared; 0x140140177 = reset to defaults; 0x140c8e22e = settings-menu budget preview). Thresholds: movabs 0x1f4000000 (8000 MiB), 0x177000000 (6000 MiB), 0x400000000 (16 GiB) read from the instructions.",
+  "risk": "Only affects freshly generated defaults and the menu preview. Players on low-VRAM cards get High texture defaults and may need to lower them by hand."
+}

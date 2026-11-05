@@ -1,0 +1,58 @@
+{
+  "feature": "boost_brake_movement",
+  "live": false,
+  "patches": [],
+  "values": [
+    {
+      "module": "exe",
+      "rva": "0x14dcfc4",
+      "expect": "00 00 80 40",
+      "replace": "00 00 00 41",
+      "why": "boost acceleration (entry+0x9f4, integrated into velocity in 0x140696360) x2: shipping constant 4 -> 8. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74a0 at engine init. Read-only section: needs VirtualProtect."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dcfc8",
+      "expect": "00 00 c0 3e",
+      "replace": "00 00 40 3f",
+      "why": "boost burst duration in seconds (entry+0xaa0 timer, checked at 0x1406f952c) x2: shipping constant 0.375 -> 0.75. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74a8 at engine init. Read-only section: needs VirtualProtect."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dcfcc",
+      "expect": "00 00 00 40",
+      "replace": "cd cc 4c 3d",
+      "why": "boost cooldown in seconds after a burst (entry+0xaa4, checked at 0x1406f9e2e) 2.0 -> 0.05 = effectively none: shipping constant 2 -> 0.05. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74bc at engine init. Read-only section: needs VirtualProtect."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dd054",
+      "expect": "00 00 80 3f",
+      "replace": "00 00 00 40",
+      "why": "brake minimum deceleration (entry+0xa94 = max(min, factor*speed) at 0x1406fa1ab) x2: shipping constant 1 -> 2. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74c4 at engine init. Read-only section: needs VirtualProtect."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dd058",
+      "expect": "00 00 60 3f",
+      "replace": "00 00 e0 3f",
+      "why": "brake speed-proportional factor x2 (per-frame decel 1.75*speed*dt stays below speed for dt < 0.57 s; 0x1406fa27f also zeroes any reversal): shipping constant 0.875 -> 1.75. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74c8 at engine init. Read-only section: needs VirtualProtect."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dd008",
+      "expect": "66 66 e6 3e",
+      "replace": "cd cc 2c 3f",
+      "why": "hand thruster scale, one hand (0x1406fa904, times script multiplier 0x141e56448) x1.5: shipping constant 0.45 -> 0.675. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74b0 at engine init. Read-only section: needs VirtualProtect."
+    },
+    {
+      "module": "exe",
+      "rva": "0x14dd00c",
+      "expect": "cd cc 0c 3f",
+      "replace": "33 33 53 3f",
+      "why": "hand thruster scale, two hands (0x1406fa8f2, times script multiplier 0x141e56450) x1.5: shipping constant 0.55 -> 0.825. .rdata source, read only by the tuning filler 0x14072dd50 which copies it into runtime global 0x141ef74b4 at engine init. Read-only section: needs VirtualProtect."
+    }
+  ],
+  "evidence": "Boost logic is 0x1406f9370 (PlayerNav per-frame, called from 0x14076f59a): a burst may start while timer [entry+0xaa0] < duration (0x141ef74a8); on start it sets [9f0]=CD.boostmaxspeed (+0xbc, reflection 0x1406d21c0), [9f4]=accel (0x141ef74a0), fires delegate_BoostOn + event_sound_player_boost; each frame [aa0]+=dt; when not boosting [aa4]+=dt and once [aa4] > cooldown (0x141ef74bc) [aa0] resets to 0 (ready), otherwise it is pinned at duration+eps; failure fires delegate_BoostFailed. Brake (0x1406f9e70 path, mode constant 0x1414dd048=2) sets [a94]=max(0x141ef74c4, 0x141ef74c8*speed), x0.2 (0x1414dd040) when the power check fails. Hand thrusters (0x1406fa4d0) scale the thrust direction by 0x141ef74b0 (one hand) / 0x141ef74b4 (two hands) times save/script multipliers at 0x141e56448..5c (written by 0x1407492a0 from save/upgrade data - deliberately NOT patched). All runtime globals are BSS filled once by 0x14072dd50 (called from engine init 0x14012bd40) from .rdata constants that nothing else reads (full-.text rip-relative scan). NOT verified: exact units; top boost speed stays capped by level data unless the optional patch is used; dinput8 delay-load timing vs the filler (hence both .rdata and .data entries). Only the .rdata source constants are patched: the loader writes them in DllMain, before the engine's tuning filler (0x14072dd50) copies them into the runtime globals at 0x141ef74a0..74c8.",
+  "risk": "Value-only changes, no code. Player-only tuning (no other readers). Not saved. The .data writes are aligned float stores (live-safe), but the GUI treats this switch as next-launch. x2 brake may feel abrupt; x1.5 hand thrusters. The optional uncapped boost can reach very high speeds -> impact deaths without god mode."
+}
