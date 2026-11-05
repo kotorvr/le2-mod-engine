@@ -13,9 +13,9 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 | Switch | Status | What it does |
 |---|---|---|
 | God mode | ready | Jack can't die. Switches on and off while the game runs. |
-| Cure Gun: permanent neutralization | ready | Cured creep never comes back, and cured cysts stay deflated. Live. |
-| All gadgets | in progress | The tools the story hands out later, from the start. |
-| Maximum upgrades | in progress | Every suit and tool upgrade. |
+| Cure Gun: permanent neutralization | ready | Cured creep never comes back, and cured cysts stay deflated. |
+| All gadgets | not yet | Needs the loader to enable the tools on Jack the way the story does, which the save then keeps. See `research/all_gadgets.json`. |
+| Maximum upgrades | ready | Cutter, faraday projector and magehand work at their top upgrade level (2). Read-side only: nothing is written to your save. Radiation shield / unsticky creep not covered yet. |
 | Boost, brake, movement | ready | Boost ×2 (acceleration and burst), brake ×2, hand thrusters ×1.5, boost cooldown 2 s → 0.05 s. |
 | Unlimited thrusters | ready | Boost, brake and thrusters never drain suit power. Live. |
 | Signal and boundary limit | ready | No "signal low/lost" warning, no out-of-bounds death. |
@@ -65,7 +65,7 @@ every mod for that run.
 - The game's logic largely lives in 5,223 compiled script DLLs (`bin\win10\scripts\*.dll`). The loader hooks the
   game's `GetProcAddress` import: when the engine asks a freshly loaded script for `setup_bindings`, that script is
   patched before any of its code runs.
-- `le2mods.ini` (next to the exe) says which switches are on. Live switches are re-read four times a second.
+- `le2mods.ini` (next to the exe) says which switches are on. Live switches (god mode, unlimited thrusters, web receivers) are re-read four times a second and written with single atomic 8-byte stores, so a running thread never sees half a patch; every other switch applies at game launch, before any game code runs.
 - Everything is logged to `bin\win10\le2mods.log`.
 
 Supported build: `loneecho2.exe` PE timestamp `0x61578052` (the final Oculus release, 1.1.561021.2).

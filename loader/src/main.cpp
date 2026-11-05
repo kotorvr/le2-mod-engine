@@ -194,6 +194,7 @@ static void ReadConfig()
 
 // ---------------------------------------------------------------- patching
 enum class Write { Done, Already, Skipped };
+static int g_nonAtomicWrites = 0;  // patches that straddle an 8-byte boundary (logged for live switches)
 
 static Write Put(uint8_t* at, const uint8_t* from, const uint8_t* to, uint16_t len)
 {
@@ -201,10 +202,40 @@ static Write Put(uint8_t* at, const uint8_t* from, const uint8_t* to, uint16_t l
         return Write::Already;
     if (memcmp(at, from, len) != 0)
         return Write::Skipped;
+    // Only the bytes that actually change are written (god mode's 6-byte patch changes 2), which keeps most writes
+    // inside one 8-byte word.
+    uint16_t first = 0, last = len - 1;
+    while (first < len && from[first] == to[first])
+        ++first;
+    while (last > first && from[last] == to[last])
+        --last;
+    if (first == len)
+        return Write::Already;
+    at += first;
+    to += first;
+    len = last - first + 1;
     DWORD old;
     if (!VirtualProtect(at, len, PAGE_EXECUTE_READWRITE, &old))
         return Write::Skipped;
-    memcpy(at, to, len);
+    // Live switches patch code other threads may be running. A patch that fits inside one aligned 8-byte word is
+    // written with a single atomic exchange, so no thread can ever see half of it.
+    uintptr_t a = (uintptr_t)at;
+    if ((a & 7) + len <= 8)
+    {
+        volatile LONG64* word = (volatile LONG64*)(a & ~(uintptr_t)7);
+        LONG64 oldWord, newWord;
+        do
+        {
+            oldWord = *word;
+            newWord = oldWord;
+            memcpy((uint8_t*)&newWord + (a & 7), to, len);
+        } while (InterlockedCompareExchange64(word, newWord, oldWord) != oldWord);
+    }
+    else
+    {
+        memcpy(at, to, len);
+        g_nonAtomicWrites++;
+    }
     VirtualProtect(at, len, old, &old);
     FlushInstructionCache(GetCurrentProcess(), at, len);
     return Write::Done;
@@ -427,9 +458,11 @@ static DWORD WINAPI WatchThread(LPVOID)
             if (want == g_applied[f])
                 continue;
             g_want[f] = want;
+            int before = g_nonAtomicWrites;
             int n = SetFeature(f, want, "*");
             g_applied[f] = want;
-            Log("%s %s live (%d patches)", k_features[f].id, want ? "ON" : "OFF", n);
+            Log("%s %s live (%d patches%s)", k_features[f].id, want ? "ON" : "OFF", n,
+                g_nonAtomicWrites != before ? ", some not atomic" : "");
         }
         LeaveCriticalSection(&g_lock);
     }

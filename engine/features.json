@@ -6,7 +6,7 @@
     "experimental": false
   },
   "cure_gun_permanent": {
-    "live": true,
+    "live": false,
     "patches": 2,
     "call_hooks": 0,
     "experimental": false
@@ -20,6 +20,12 @@
   "keypad_any_code": {
     "live": false,
     "patches": 3,
+    "call_hooks": 0,
+    "experimental": false
+  },
+  "max_upgrades": {
+    "live": false,
+    "patches": 12,
     "call_hooks": 0,
     "experimental": false
   },
