@@ -343,14 +343,16 @@ static uint8_t* NearPage(uint8_t* exe)
     return nullptr;
 }
 
+// One executable page near the exe, shared by the call hooks and the crash guards (16 bytes per jump).
+static uint8_t* page = nullptr;
+static int used = 0;
+
 static int InstallCallHooks(int f)
 {
     const FeatureDef& def = k_features[f];
     if (def.hookCount == 0)
         return 0;
     uint8_t* exe = (uint8_t*)GetModuleHandleW(nullptr);
-    static uint8_t* page = nullptr;
-    static int used = 0;
     if (page == nullptr && (page = NearPage(exe)) == nullptr)
     {
         Log("  %s: no memory near the exe for call hooks", def.id);
@@ -384,6 +386,63 @@ static int InstallCallHooks(int f)
             ++done;
     }
     return done;
+}
+
+// ---------------------------------------------------------------- crash guards
+// Always on (no switch), skipped with -nomods or [fixes] crash_guards=0.
+//
+// Faraday field target: the field lookup 0x140acc350 (used by CR16FaradayProjectorFieldExpression 0x140cf55b0, and by
+// 0x140cf4a10) checks an active field's target component ref with 0x140148e60 -> 0x14013c260. That resolver only
+// treats a null world pointer as empty, so a ref left at the -1 template (field slot active, target never set) is
+// dereferenced: AV reading 0x217f at 0x14013c283. It happened with the faraday projector on biomass (3 dumps,
+// 2026-11-10, the last one with the faraday max-upgrade patches already removed). The guard answers "nonzero" for
+// such a ref, which sends 0x140acc350 down its own "no target" path (out = -1, the same as an inactive slot).
+namespace Guards
+{
+    typedef uint32_t (*RefCheckFn)(uint64_t*);
+    static const uint32_t kFieldRefCallSite = 0xacc3ad;  // call 0x140148e60 inside 0x140acc350
+    static const uint32_t kRefCheck = 0x148e60;
+    static RefCheckFn g_refCheck = nullptr;
+    static volatile LONG g_fieldRefHits = 0;
+
+    static uint32_t FieldRefCheck(uint64_t* ref)
+    {
+        if (ref != nullptr && *ref == ~0ull)
+        {
+            LONG n = InterlockedIncrement(&g_fieldRefHits);
+            if (n == 1 || n == 10 || n == 100 || n % 1000 == 0)
+                Log("crash guard: faraday field with an invalid target skipped (%ld so far)", n);
+            return 1;
+        }
+        return g_refCheck(ref);
+    }
+
+    static bool Redirect(uint8_t* exe, uint32_t siteRva, uint32_t calleeRva, void* target)
+    {
+        uint8_t* site = exe + siteRva;
+        if (site[0] != 0xE8 || site + 5 + *(int32_t*)(site + 1) != exe + calleeRva)
+            return false;
+        if (page == nullptr && (page = NearPage(exe)) == nullptr)
+            return false;
+        if (used + 16 > 4096)
+            return false;
+        uint8_t* jump = page + used;
+        used += 16;
+        jump[0] = 0xFF; jump[1] = 0x25; *(uint32_t*)(jump + 2) = 0;  // jmp qword ptr [rip+0]
+        *(uint64_t*)(jump + 6) = (uint64_t)target;
+        uint8_t call[5] = { 0xE8 };
+        *(int32_t*)(call + 1) = (int32_t)(jump - (site + 5));
+        return Put(site, site, call, 5) != Write::Skipped;
+    }
+
+    static void Install(uint8_t* exe)
+    {
+        g_refCheck = (RefCheckFn)(exe + kRefCheck);
+        if (Redirect(exe, kFieldRefCallSite, kRefCheck, (void*)&FieldRefCheck))
+            Log("crash guard: faraday field target check on");
+        else
+            Log("crash guard: faraday field call site differs (other game build?): off");
+    }
 }
 
 // ---------------------------------------------------------------- script hook
@@ -794,6 +853,8 @@ static void Start()
         else
             Log("%s on (%d exe patches now, script patches as scripts load)", k_features[f].id, n);
     }
+    if (IniFlag("fixes", "crash_guards", 1))
+        Guards::Install(exe);
     Log(HookExeImport() ? "script hook installed" : "script hook FAILED: script patches are off");
     if (IniFlag("mods", "all_gadgets", 0))
         Gadgets::Install(exe);
