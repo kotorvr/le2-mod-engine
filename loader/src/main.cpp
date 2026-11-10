@@ -435,6 +435,48 @@ namespace Guards
         return Put(site, site, call, 5) != Write::Skipped;
     }
 
+    // Component ref resolver 0x14013c260 (every ref read goes through it): its entry tests only for a null world
+    // pointer (`cmp qword [rcx],0 / je 0x14013c4cc`, where 0x14013c4cc resets the ref to empty and returns). The guard
+    // above only covered one caller; the faraday field expression also checks the same ref from 0x140cf6114 and
+    // crashed there (4th dump). This detour sends a -1 world pointer down the same empty path, after zeroing it, so
+    // every caller sees an ordinary empty ref. Runs at start-up, before any game code.
+    static const uint32_t kResolverTest = 0x13c272;  // 10 bytes: cmp qword ptr [rcx],0 ; je 0x14013c4cc
+    static const uint32_t kResolverEmpty = 0x13c4cc;
+    static const uint32_t kResolverContinue = 0x13c27c;
+
+    static bool DetourResolver(uint8_t* exe)
+    {
+        static const uint8_t expect[10] = { 0x48, 0x83, 0x39, 0x00, 0x0F, 0x84, 0x50, 0x02, 0x00, 0x00 };
+        uint8_t* site = exe + kResolverTest;
+        if (memcmp(site, expect, sizeof(expect)) != 0)
+            return false;
+        if (page == nullptr && (page = NearPage(exe)) == nullptr)
+            return false;
+        if (used + 64 > 4096)
+            return false;
+        uint8_t* cave = page + used;
+        used += 64;
+        static const uint8_t code[21] = {
+            0x48, 0x8B, 0x01,                          // mov rax, [rcx]
+            0x48, 0x85, 0xC0,                          // test rax, rax
+            0x74, 0x0D,                                // jz empty (+13)
+            0x48, 0x83, 0xF8, 0xFF,                    // cmp rax, -1
+            0x75, 0x15,                                // jne resume (+21)
+            0x48, 0xC7, 0x01, 0x00, 0x00, 0x00, 0x00,  // mov qword ptr [rcx], 0
+        };
+        memcpy(cave, code, sizeof(code));
+        uint8_t* empty = cave + 21;  // jmp qword ptr [rip+0] -> 0x14013c4cc
+        empty[0] = 0xFF; empty[1] = 0x25; *(uint32_t*)(empty + 2) = 0;
+        *(uint64_t*)(empty + 6) = (uint64_t)(exe + kResolverEmpty);
+        uint8_t* resume = cave + 35;  // jmp qword ptr [rip+0] -> 0x14013c27c
+        resume[0] = 0xFF; resume[1] = 0x25; *(uint32_t*)(resume + 2) = 0;
+        *(uint64_t*)(resume + 6) = (uint64_t)(exe + kResolverContinue);
+        FlushInstructionCache(GetCurrentProcess(), cave, 64);
+        uint8_t jump[10] = { 0xE9, 0, 0, 0, 0, 0x90, 0x90, 0x90, 0x90, 0x90 };
+        *(int32_t*)(jump + 1) = (int32_t)(cave - (site + 5));
+        return Put(site, expect, jump, 10) != Write::Skipped;
+    }
+
     static void Install(uint8_t* exe)
     {
         g_refCheck = (RefCheckFn)(exe + kRefCheck);
@@ -442,6 +484,10 @@ namespace Guards
             Log("crash guard: faraday field target check on");
         else
             Log("crash guard: faraday field call site differs (other game build?): off");
+        if (DetourResolver(exe))
+            Log("crash guard: component ref resolver treats invalid (-1) refs as empty");
+        else
+            Log("crash guard: component ref resolver differs (other game build?): off");
     }
 }
 

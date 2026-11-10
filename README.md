@@ -39,7 +39,7 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 - **No Windows power throttling** (EcoQoS) for the game process on Windows 11.
 - **Quest controller vibration over Link/Air Link.** Quest ignores the game's buffered haptics, so the loader converts them to `ovr_SetControllerVibration`, with a strength setting in the VR tab.
 - **Keeps running behind the Oculus Dash** instead of pausing.
-- **Crash guard: Faraday projector fields.** The game could crash (access violation at `loneecho2.exe+0x13c283`) when the Faraday projector was used on biomass: a field slot was active but its target was never set, and the game read through the empty target. The loader treats such a field as having no target. Always on; `[fixes] crash_guards = 0` in `le2mods.ini` turns it off. The first hit is logged to `le2mods.log`.
+- **Crash guard: Faraday projector fields.** The game could crash (access violation at `loneecho2.exe+0x13c283`) when the Faraday projector was used on biomass: a field slot was active but its target was never set, and the game read through the empty target. The loader makes the game's component-reference resolver treat that broken target as empty, the same as a field with no target. Always on; `[fixes] crash_guards = 0` in `le2mods.ini` turns it off. The first hit is logged to `le2mods.log`.
 - **NVIDIA profile, optional.** One button sets *Power management: Prefer maximum performance* on the driver's own
   "Lone Echo II" profile through NVAPI; another removes it again. Nothing replaces the driver database.
 
