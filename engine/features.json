@@ -21,11 +21,11 @@
     "live": false,
     "patches": 3,
     "call_hooks": 0,
-    "experimental": false
+    "experimental": true
   },
   "max_upgrades": {
     "live": false,
-    "patches": 12,
+    "patches": 7,
     "call_hooks": 0,
     "experimental": false
   },

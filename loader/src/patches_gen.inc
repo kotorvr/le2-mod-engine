@@ -91,33 +91,18 @@ static const uint8_t k_max_upgrades_3_e[] = { 0x49, 0x8b, 0x94, 0x14, 0xb0, 0x0a
 static const uint8_t k_max_upgrades_3_r[] = { 0xba, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90, 0x90 };
 static const uint8_t k_max_upgrades_4_e[] = { 0x4d, 0x8b, 0x84, 0x14, 0xb0, 0x0a, 0x00, 0x00 };
 static const uint8_t k_max_upgrades_4_r[] = { 0x41, 0xb8, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_max_upgrades_5_e[] = { 0x49, 0x8b, 0x8d, 0xb0, 0x0a, 0x00, 0x00 };
-static const uint8_t k_max_upgrades_5_r[] = { 0xb9, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_max_upgrades_6_e[] = { 0x49, 0x8b, 0x8d, 0xb0, 0x0a, 0x00, 0x00 };
-static const uint8_t k_max_upgrades_6_r[] = { 0xb9, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_max_upgrades_7_e[] = { 0x49, 0x8b, 0x8d, 0xb0, 0x0a, 0x00, 0x00 };
-static const uint8_t k_max_upgrades_7_r[] = { 0xb9, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_max_upgrades_8_e[] = { 0x49, 0x8b, 0x8d, 0xb0, 0x0a, 0x00, 0x00 };
-static const uint8_t k_max_upgrades_8_r[] = { 0xb9, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_max_upgrades_9_e[] = { 0x49, 0x8b, 0x8d, 0xb0, 0x0a, 0x00, 0x00 };
-static const uint8_t k_max_upgrades_9_r[] = { 0xb9, 0x02, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_max_upgrades_10_e[] = { 0x41, 0x8b, 0x04, 0xb1 };
-static const uint8_t k_max_upgrades_10_r[] = { 0x41, 0x8b, 0x41, 0x08 };
-static const uint8_t k_max_upgrades_11_e[] = { 0x41, 0x8b, 0x04, 0xb1 };
-static const uint8_t k_max_upgrades_11_r[] = { 0x41, 0x8b, 0x41, 0x08 };
+static const uint8_t k_max_upgrades_5_e[] = { 0x41, 0x8b, 0x04, 0xb1 };
+static const uint8_t k_max_upgrades_5_r[] = { 0x41, 0x8b, 0x41, 0x08 };
+static const uint8_t k_max_upgrades_6_e[] = { 0x41, 0x8b, 0x04, 0xb1 };
+static const uint8_t k_max_upgrades_6_r[] = { 0x41, 0x8b, 0x41, 0x08 };
 static const PatchBytes k_max_upgrades[] = {
     { nullptr, 0x772cbe, k_max_upgrades_0_e, k_max_upgrades_0_r, 8 },
     { nullptr, 0xa7f9b0, k_max_upgrades_1_e, k_max_upgrades_1_r, 7 },
     { nullptr, 0xa7fb7a, k_max_upgrades_2_e, k_max_upgrades_2_r, 7 },
     { nullptr, 0xa9369b, k_max_upgrades_3_e, k_max_upgrades_3_r, 8 },
     { nullptr, 0xa93786, k_max_upgrades_4_e, k_max_upgrades_4_r, 8 },
-    { nullptr, 0xb0a572, k_max_upgrades_5_e, k_max_upgrades_5_r, 7 },
-    { nullptr, 0xb0a6b8, k_max_upgrades_6_e, k_max_upgrades_6_r, 7 },
-    { nullptr, 0xb0ac1b, k_max_upgrades_7_e, k_max_upgrades_7_r, 7 },
-    { nullptr, 0xadb44f, k_max_upgrades_8_e, k_max_upgrades_8_r, 7 },
-    { nullptr, 0xadb4a5, k_max_upgrades_9_e, k_max_upgrades_9_r, 7 },
-    { nullptr, 0x74a837, k_max_upgrades_10_e, k_max_upgrades_10_r, 4 },
-    { nullptr, 0xa6bc17, k_max_upgrades_11_e, k_max_upgrades_11_r, 4 },
+    { nullptr, 0x74a837, k_max_upgrades_5_e, k_max_upgrades_5_r, 4 },
+    { nullptr, 0xa6bc17, k_max_upgrades_6_e, k_max_upgrades_6_r, 4 },
 };
 
 static const CallHook k_openxr_runtime_hooks[] = {
@@ -228,7 +213,7 @@ static const FeatureDef k_features[] = {
     { "cure_gun_permanent", false, k_cure_gun_permanent, 2, k_cure_gun_permanent_hooks, 0 },
     { "god_mode", true, k_god_mode, 2, k_god_mode_hooks, 0 },
     { "keypad_any_code", false, k_keypad_any_code, 3, k_keypad_any_code_hooks, 0 },
-    { "max_upgrades", false, k_max_upgrades, 12, k_max_upgrades_hooks, 0 },
+    { "max_upgrades", false, k_max_upgrades, 7, k_max_upgrades_hooks, 0 },
     { "openxr_runtime", false, k_openxr_runtime, 1, k_openxr_runtime_hooks, 0 },
     { "perf_default_caps", false, k_perf_default_caps, 2, k_perf_default_caps_hooks, 0 },
     { "perf_streaming", false, k_perf_streaming, 2, k_perf_streaming_hooks, 0 },

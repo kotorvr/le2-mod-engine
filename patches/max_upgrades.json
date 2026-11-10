@@ -39,41 +39,6 @@
     },
     {
       "module": "exe",
-      "rva": "0xb0a572",
-      "expect": "49 8b 8d b0 0a 00 00",
-      "replace": "b9 02 00 00 00 90 90",
-      "why": "CR16FaradayProjectorCS update (vtable slot 119, 0x140b0a070): per-level count table [CD+0x108][level*8] (loop bound) -> level 2."
-    },
-    {
-      "module": "exe",
-      "rva": "0xb0a6b8",
-      "expect": "49 8b 8d b0 0a 00 00",
-      "replace": "b9 02 00 00 00 90 90",
-      "why": "FaradayProjector update: same per-level loop bound, re-read at loop end -> level 2."
-    },
-    {
-      "module": "exe",
-      "rva": "0xb0ac1b",
-      "expect": "49 8b 8d b0 0a 00 00",
-      "replace": "b9 02 00 00 00 90 90",
-      "why": "FaradayProjector update: third per-level read -> level 2."
-    },
-    {
-      "module": "exe",
-      "rva": "0xadb44f",
-      "expect": "49 8b 8d b0 0a 00 00",
-      "replace": "b9 02 00 00 00 90 90",
-      "why": "Faraday helper 0x140ada620 (called only from the faraday update at 0x140b0a9cc): per-level count [CD+0x108][level*8] -> level 2."
-    },
-    {
-      "module": "exe",
-      "rva": "0xadb4a5",
-      "expect": "49 8b 8d b0 0a 00 00",
-      "replace": "b9 02 00 00 00 90 90",
-      "why": "Faraday helper 0x140ada620: loop-bound re-read -> level 2."
-    },
-    {
-      "module": "exe",
       "rva": "0x74a837",
       "expect": "41 8b 04 b1",
       "replace": "41 8b 41 08",
@@ -88,5 +53,5 @@
     }
   ],
   "evidence": "Tool upgrade level = qword at tool component entry+0xab0 (stride 0xb78, entries at [cs+0x100], index map [cs+0xd0]). Vtables from RTTI: CR16ToolAbilityCS 0x141a657d8 and subclasses MageHand 0x141a4cdd8, Cutter 0x141a84498, CureGun 0x141a833e8, FaradayProjector 0x141a9ff18 (+IOScanner) share slot +0x340 = getter 0x140772ca0 and slot +0x348 = setter 0x140924be0 (MageHand/Cutter override +0x348 to also cache a per-level table value at entry+0xab8). Whole-.text scan of qword reads of +0xab0: the gameplay readers are the cutter update + helper and the faraday update + helper patched here; they index per-level tables in the tool's CD (cutter [CD+0x130],[CD+0x1d8]; faraday [CD+0x108]). Level 2 = max: r16_player_upgrade has exactly upg_<tool>_1 and _2 for cutter, faraday and magehand. Nothing writes +0xab0 except the setter, so no save data changes (read-side). NOT covered: radiation shield (upg_radiation_shield_*; the 'upgradedheaddamage'/'upgradeddamagerate' fields belong to player-nav damage data, selection not located) and upg_unsticky_creep. NOT verified in game: effect strength, that every table has 3 entries, and the magehand/cutter cached value only refreshes when the game next calls SetUpgradeLevel.",
-  "risk": "Read-side: turning it off restores the true level at once, except the magehand/cutter cached value, which reverts at the next SetUpgradeLevel. Scripts asking for a tool's upgrade level (R16ToolAbilityUpgradeLevelExpression) see 2 for every tool while on, so upgrade-station offers or dialogue may be skipped or act as if done; the saved upgrade state is untouched. Four more +0xab0 readers (0x140adc6f0, 0x140aedf20, 0x140aee440, 0x140b23f30; stride-0x140 table pattern) are left alone because 0x140aedf20 is COMDAT-shared with CR16ImpulseToHandTouchTypeCS, so their owners are unconfirmed. If a table has fewer than 3 entries, index 2 reads past it (garbage values from the resource arena). Applied at game launch only: some patches are longer than one atomic 8-byte write, so changing them while the game runs could let a thread execute a half-written instruction."
+  "risk": "Read-side: turning it off restores the true level at once, except the magehand/cutter cached value, which reverts at the next SetUpgradeLevel. Scripts asking for a tool's upgrade level (R16ToolAbilityUpgradeLevelExpression) see 2 for every tool while on, so upgrade-station offers or dialogue may be skipped or act as if done; the saved upgrade state is untouched. Four more +0xab0 readers (0x140adc6f0, 0x140aedf20, 0x140aee440, 0x140b23f30; stride-0x140 table pattern) are left alone because 0x140aedf20 is COMDAT-shared with CR16ImpulseToHandTouchTypeCS, so their owners are unconfirmed. If a table has fewer than 3 entries, index 2 reads past it (garbage values from the resource arena). Applied at game launch only: some patches are longer than one atomic 8-byte write, so changing them while the game runs could let a thread execute a half-written instruction. FARADAY REMOVED (2026-11-10): forcing the faraday field-count loop bound to level 2 crashed the game when the projector was used on biomass (two BugSplat dumps, AV reading [-1+0x2180] in the component-ref resolver 0x14013c260, called from CR16FaradayProjectorFieldExpression 0x140cf55b0 -> field lookup 0x140acc350). The field array (+0xba0, stride 0xd8) is allocated for the max level, but other faraday code (0x140adc6f0, 0x140aedf20, 0x140aee440, 0x140b23f30) still loops with the real level from +0xab0, so a slot activated by the level-2 loop never got its target ref (+0x60 left at the -1 template). The faraday projector now runs at its real level; cutter and magehand are unchanged. The shared getter 0x140772ca0 still reports 2 for the faraday to scripts."
 }
