@@ -21,7 +21,7 @@ crash and to leave NVIDIA settings broken, especially on Windows 11. See [What V
 | Signal and boundary limit | ready | No "signal low/lost" warning, no out-of-bounds death. |
 | Web receivers stay disabled | ready | A web receiver you disable doesn't switch itself back on after 5 s. Live. |
 | Tool range 1000 | experimental | Magehand, cutter and faraday projector reach set to 1000 when their tool data loads. IO scanner and cure gun not covered yet. |
-| Any four digit keypad code | experimental | Keypad doors accept any code. Known to softlock on at least one keypad; leave it off for now. |
+| Any four digit keypad code | experimental | Keypad doors accept any code. Reworked after the first version softlocked keypads: the code check now just reports "correct", so a keypad can't lock up; worst case a wrong code fails like normal. |
 
 **Performance**
 

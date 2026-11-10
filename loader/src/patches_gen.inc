@@ -66,16 +66,10 @@ static const PatchBytes k_god_mode[] = {
 static const CallHook k_keypad_any_code_hooks[] = {
     { 0, 0, 0, nullptr, 0 },
 };
-static const uint8_t k_keypad_any_code_0_e[] = { 0x0f, 0xb6, 0x88, 0xb2, 0x00, 0x00, 0x00 };
-static const uint8_t k_keypad_any_code_0_r[] = { 0xb9, 0x01, 0x00, 0x00, 0x00, 0x90, 0x90 };
-static const uint8_t k_keypad_any_code_1_e[] = { 0x80, 0xb9, 0xb2, 0x00, 0x00, 0x00, 0x00, 0x48, 0x0f, 0x45, 0xc2 };
-static const uint8_t k_keypad_any_code_1_r[] = { 0x48, 0x89, 0xd0, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
-static const uint8_t k_keypad_any_code_2_e[] = { 0x0f, 0xb6, 0x81, 0xb2, 0x00, 0x00, 0x00 };
-static const uint8_t k_keypad_any_code_2_r[] = { 0xb8, 0x01, 0x00, 0x00, 0x00, 0x90, 0x90 };
+static const uint8_t k_keypad_any_code_0_e[] = { 0x0f, 0x95, 0xc1, 0x88, 0x88, 0xb2, 0x00, 0x00, 0x00 };
+static const uint8_t k_keypad_any_code_0_r[] = { 0xb1, 0x01, 0x90, 0x88, 0x88, 0xb2, 0x00, 0x00, 0x00 };
 static const PatchBytes k_keypad_any_code[] = {
-    { "1b9174546ee05f8a.dll", 0x17cc3, k_keypad_any_code_0_e, k_keypad_any_code_0_r, 7 },
-    { "1b9174546ee05f8a.dll", 0xe136, k_keypad_any_code_1_e, k_keypad_any_code_1_r, 11 },
-    { "1b9174546ee05f8a.dll", 0xc071, k_keypad_any_code_2_e, k_keypad_any_code_2_r, 7 },
+    { "1b9174546ee05f8a.dll", 0x1872e, k_keypad_any_code_0_e, k_keypad_any_code_0_r, 9 },
 };
 
 static const CallHook k_max_upgrades_hooks[] = {
@@ -212,7 +206,7 @@ static const FeatureDef k_features[] = {
     { "boost_brake_movement", false, k_boost_brake_movement, 11, k_boost_brake_movement_hooks, 0 },
     { "cure_gun_permanent", false, k_cure_gun_permanent, 2, k_cure_gun_permanent_hooks, 0 },
     { "god_mode", true, k_god_mode, 2, k_god_mode_hooks, 0 },
-    { "keypad_any_code", false, k_keypad_any_code, 3, k_keypad_any_code_hooks, 0 },
+    { "keypad_any_code", false, k_keypad_any_code, 1, k_keypad_any_code_hooks, 0 },
     { "max_upgrades", false, k_max_upgrades, 7, k_max_upgrades_hooks, 0 },
     { "openxr_runtime", false, k_openxr_runtime, 1, k_openxr_runtime_hooks, 0 },
     { "perf_default_caps", false, k_perf_default_caps, 2, k_perf_default_caps_hooks, 0 },

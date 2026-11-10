@@ -19,7 +19,7 @@
   },
   "keypad_any_code": {
     "live": false,
-    "patches": 3,
+    "patches": 1,
     "call_hooks": 0,
     "experimental": true
   },
